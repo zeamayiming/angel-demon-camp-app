@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天使惡魔：上帝視角版 v4.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div id="user-bar" class="user-bar">
+        <span>👤 <b id="bar-username">載入中...</b></span>
+        <span onclick="logout()" style="opacity: 0.7; cursor: pointer; font-size: 12px;">登出帳號</span>
+    </div>
+
+    <header id="main-header">
+        <ul class="nav-tabs">
+            <li onclick="switchTab('tab-quests')" id="btn-tab-quests" class="active">任務牆</li>
+            <li onclick="switchTab('tab-mail')" id="btn-tab-mail">匿名信箱</li>
+            <li onclick="switchTab('tab-guess')" id="btn-tab-guess">今日猜猜看</li>
+        </ul>
+    </header>
+
+    <div class="content">
+        <div id="login-screen" class="screen active">
+            <div style="text-align:center; padding: 40px 0;">
+                <h2 style="color: var(--primary);">👼 天使惡魔：生存戰</h2>
+                <input type="text" id="username" placeholder="請輸入帳號名稱">
+                <input type="password" id="password" placeholder="請輸入密碼">
+                <button class="btn-primary" onclick="login()">進入 / 註冊</button>
+                <p style="color:#94a3b8; font-size:12px; margin-top:15px;">* 首次登入將自動以此密碼完成註冊</p>
+            </div>
+        </div>
+
+        <div id="waiting-screen" class="screen">
+            <h3 style="text-align:center;">等待營隊活動開啟</h3>
+            <div style="text-align:center; background:#f1f5f9; padding:30px; border-radius:15px;">
+                <p>你好，<b><span id="wait-name"></span></b></p>
+                <p>目前在線報到人數：<br><span id="player-count" style="font-size:40px; color:var(--primary); font-weight:bold;">0</span></p>
+                <p style="color:#64748b; font-size:14px;">請靜候管理員分配秘密身分...</p>
+            </div>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 0 15px;">
+                <div style="flex: 1; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;">
+                    <small style="color: #64748b; font-weight: bold;">🏆 我的總積分</small>
+                    <div id="my-current-points" style="font-size: 28px; color: var(--primary); font-weight: bold; margin-top: 5px;">0</div>
+                </div>
+                <div style="flex: 1.5; background: #fff; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <small style="color: #64748b; font-weight: bold;">🔥 當前風雲榜 (Top 3)</small>
+                    <ol id="top-leaderboard" style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #333; line-height: 1.6;">
+                        <li>載入中...</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- <div id="tab-quests" class="tab-content active"> -->
+            <div id="tab-quests" class="tab-content active">
+                <div class="card angel-card">
+                    <small>😇 你是 <b id="angel-target-display" style="font-size:18px;">?</b> 的小天使：</small>
+                    <div class="task-selector">
+                        <label>選擇要執行的天使任務：</label>
+                        <select id="select-task-angel" onchange="checkCustom('angel')">
+                            <option value="">-- 請選擇任務 --</option>
+                            <option value="收到鼓勵便利貼">秘密送鼓勵便利貼</option>
+                            <option value="收到有人送的水">秘密遞送水或飲料</option>
+                            <option value="有人幫忙整理環境">幫他整理環境</option>
+                            <option value="有人陪你聊心事">陪他或她說心事</option>
+                            <option value="custom">✍️ 其他 (自行輸入任務...)</option>
+                        </select>
+                        <input type="text" id="custom-task-angel" style="display:none;" placeholder="請輸入你對他/她做的具體行為...">
+                    </div>
+                    <button class="btn-submit" onclick="submitBlindTask('angel')">我已完成！</button>
+                </div>
+
+                <div class="card demon-card">
+                    <small>😈 你是 <b id="demon-target-display" style="font-size:18px;">?</b> 的小惡魔：</small>
+                    <div class="task-selector">
+                        <label>選擇要執行的惡魔任務：</label>
+                        <select id="select-task-demon" onchange="checkCustom('demon')">
+                            <option value="">-- 請選擇挑戰 --</option>
+                            <option value="有人在你背後貼標籤紙">在背後貼標籤紙</option>
+                            <option value="聽到有人說冷笑話">說一個冷笑話</option>
+                            <!-- <option value="在他背後貼上不被發現的小標籤"></option> -->
+                            <!-- <option value="對他說一個超冷的冷笑話並讓他傻眼">冷笑話突擊</option> -->
+                            <option value="custom">✍️ 其他 (自行輸入惡作劇...)</option>
+                        </select>
+                        <input type="text" id="custom-task-demon" style="display:none;" placeholder="請輸入你對他/她做的具體行為...">
+                    </div>
+                    <button class="btn-submit-task" onclick="submitBlindTask('demon')">我已完成！</button>
+                </div>
+
+            </div>
+
+
+
+
+
+            <div id="tab-mail" class="tab-content" style="display:none;">
+                <h3>📬 匿名傳聲筒</h3>
+                <select id="mail-to"></select>
+                <textarea id="mail-msg" placeholder="輸入匿名訊息..."></textarea>
+                <button class="btn-primary" onclick="sendMail()">發送匿名信</button>
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+                <div id="mailbox-list"></div>
+            </div>
+
+            <div id="tab-guess" class="tab-content" style="display:none;">
+                <h3>今日猜猜看</h3>
+                <div style="background:#f1f5f9; padding:15px; border-radius:12px;">
+                    <label>誰是你的小天使？</label>
+                    <select id="guess-a"></select>
+                    <label>誰是你的小惡魔？</label>
+                    <select id="guess-d"></select>
+                    <button class="btn-primary" onclick="submitGuess()">提交指認</button>
+                </div>
+                <p style="font-size:12px; color:#ef4444; margin-top:10px;">* 每個身分僅能指認一次，請謹慎選擇！</p>
+            </div>
+
+            </div>
+            <div id="end-screen" class="screen">
+                <div style="text-align:center; padding: 20px 0;">
+                    <h2 style="color: var(--primary);">🎉 遊戲結束！真相大白 🎉</h2>
+                    <div style="background:#f1f5f9; padding:20px; border-radius:15px; margin-bottom:20px;">
+                        <h3>你的最終總積分</h3>
+                        <span id="final-score" style="font-size:48px; color:#ef4444; font-weight:bold;">0</span>
+                    </div>
+                    
+                    <div class="card angel-card" style="margin-bottom: 15px;">
+                        <h3 style="margin:0 0 10px 0;">😇 默默守護你的小天使是：</h3>
+                        <div id="my-angel-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
+                    </div>
+                    
+                    <div class="card demon-card">
+                        <h3 style="margin:0 0 10px 0;">😈 一直在捉弄你的小惡魔是：</h3>
+                        <div id="my-demon-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
+                    </div>
+                </div>
+            </div>
+
+<div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px;">ADMIN</div>
+        
+        <div id="admin-panel" class="admin-section">
+            <h3 style="margin-top:0;">👁️ 上帝視角控制台</h3>
+            
+            <button style="background:#475569; color:white;" onclick="assignRoles()">1. 隨機分配身分並同步開始</button>
+            <button style="background:#be123c; color:white;" onclick="resetGame()">2. 徹底重置 (清空所有資料)</button>
+            <button style="background:#059669; color:white;" onclick="revealAll()">3. 生成全體關係報告</button>
+            <button style="background:#f59e0b; color:white;" onclick="endGame()">4. 結束遊戲並全體揭曉</button>
+            
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+            
+            <h4 style="margin:0 0 10px 0; color:#475569;">🧩 晚間盲測審核區</h4>
+            <button style="background:#3b82f6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 A. 載入今日任務清單 (不影響玩家)</button>
+            
+            <div id="admin-task-review" style="background:#f8fafc; padding:10px; border-radius:5px; margin-bottom:10px; border:1px solid #cbd5e1; display:none;">
+                <div id="review-list" style="max-height:150px; overflow-y:auto; text-align:left; font-size:13px; line-height:1.6;">
+                    </div>
+                <div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px; display:flex; gap:5px;">
+                    <input type="text" id="fake-task-input" placeholder="加入假任務(煙霧彈)..." style="flex:1; padding:5px; border:1px solid #ccc; border-radius:4px;">
+                    <button onclick="addFakeTask()" style="background:#475569; color:white; padding:5px 10px; font-size:12px; width:auto; margin:0;">加入</button>
+                </div>
+            </div>
+
+            <button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="publishAndStartSettlement()">📢 B. 發布勾選任務並強制玩家作答</button>
+            <button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 C. 結算全體分數並返回遊戲</button>
+
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+
+            <h4>📊 玩家即時狀態監控</h4>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>玩家</th>
+                        <th>積分</th>
+                        <!-- <th>最新任務與證明 (含照片預覽)</th> -->
+                        <th>管理動作</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-monitor"></tbody>
+            </table>
+
+        <!-- <div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px;">ADMIN</div>
+        <div id="admin-panel" class="admin-section">
+            <h3 style="margin-top:0;">�👁️ 上帝視角控制台</h3>
+            <button style="background:#475569; color:white;" onclick="assignRoles()">1. 隨機分配身分並同步開始</button>
+            <button style="background:#be123c; color:white;" onclick="resetGame()">2. 徹底重置 (清空所有資料)</button>
+            <button style="background:#059669; color:white;" onclick="revealAll()">3. 生成全體關係報告</button>
+            <button style="background:#f59e0b; color:white;" onclick="endGame()">4. 結束遊戲並全體揭曉</button>
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+<button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 選擇任務清單</button>
+<button style="background:#5489fb; color:white;" onclick="publishAndStartSettlement()">🧮 晚間發布今日結算</button>
+<button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 結算今日分數並返回遊戲</button>
+
+            <h4>📊 玩家即時狀態監控</h4>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>玩家</th>
+                        <th>積分</th>
+                        <th>最新任務與證明 (含照片預覽)</th>
+                        <th>管理動作</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-monitor"></tbody>
+            </table>
+        </div> -->
+
+ <div id="daily-settle-screen" class="screen">
+    <div style="text-align:center; padding: 20px 0;">
+        <h2 style="color: var(--primary);">🔍 晚間結算積分</h2>
+        <p style="font-size:14px; color:#64748b;">請回想今天一整天，以下哪些事情<b>確實發生在你身上</b>？<br><small>(勾選正確與對方配對成功，雙方各得 25 分！)</small></p>
+        
+        <div id="checklist-container" style="text-align:left; background:#f1f5f9; padding:20px; border-radius:12px; margin-bottom:15px; font-size:16px; line-height:1.8;">
+            </div>
+        
+        <button class="btn-primary" onclick="submitChecklist()">提交我的拼圖</button>
+    </div>
+</div> 
+<div id="admin-panel" class="admin-section">
+<hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+    <h4 style="margin:0 0 10px 0; color:#475569;">🧩 晚間盲測審核區</h4>
+    
+    <button style="background:#3b82f6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 1. 載入今日任務清單 (不影響玩家)</button>
+    
+    <div id="admin-task-review" style="background:#f8fafc; padding:10px; border-radius:5px; margin-bottom:10px; border:1px solid #cbd5e1; display:none;">
+        <div id="review-list" style="max-height:150px; overflow-y:auto; text-align:left; font-size:13px; line-height:1.6;">
+            </div>
+        <div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px; display:flex; gap:5px;">
+            <input type="text" id="fake-task-input" placeholder="加入假任務(煙霧彈)..." style="flex:1; padding:5px; border:1px solid #ccc; border-radius:4px;">
+            <button onclick="addFakeTask()" style="background:#475569; color:white; padding:5px 10px; font-size:12px; width:auto; margin:0;">加入</button>
+        </div>
+    </div>
+
+    <button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="publishAndStartSettlement()">📢 2. 發布勾選任務並強制玩家作答</button>
+    <button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 3. 結算全體分數並返回遊戲</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
