@@ -1,3 +1,29 @@
+// --- 新增：切換密碼顯示狀態 ---
+function togglePassword() {
+    const pwdInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggle-pwd');
+    
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        toggleIcon.innerText = '🙈'; // 切換成閉眼圖示
+    } else {
+        pwdInput.type = 'password';
+        toggleIcon.innerText = '👁️'; // 切換回睜眼圖示
+    }
+}
+
+// --- 新增：網頁載入時自動填入已記憶的帳密 ---
+window.onload = function() {
+    const savedName = localStorage.getItem('ad_saved_username');
+    const savedPass = localStorage.getItem('ad_saved_password');
+    
+    if (savedName && savedPass) {
+        document.getElementById('username').value = savedName;
+        document.getElementById('password').value = savedPass;
+        document.getElementById('remember-me').checked = true; // 將選項自動打勾
+    }
+};
+
 // --- 1. Firebase 配置 (請替換為您的資訊) ---
     const firebaseConfig = {
         apiKey: "AIzaSyD-4s0k0_wyEiievNHgxmci_IepkhKMEYQ",
@@ -21,21 +47,56 @@ if (myUid) startSync();
 function login() {
     const name = document.getElementById('username').value.trim();
     const pass = document.getElementById('password').value.trim();
+    const remember = document.getElementById('remember-me').checked; // 🌟 新增：抓取是否有打勾
+
     if (!name || !pass) return alert("請填寫完整帳密");
 
+    // 去資料庫找這個名字
     db.ref('players').orderByChild('name').equalTo(name).once('value', (snap) => {
         if (snap.exists()) {
-            let uid, data;
-            snap.forEach(c => { uid = c.key; data = c.val(); });
-            if (data.password === pass) { doLogin(uid, name); } 
-            else { alert("此名稱已被註冊，密碼錯誤！"); }
+            // 帳號已存在 -> 檢查密碼
+            let uid = Object.keys(snap.val())[0];
+            let p = snap.val()[uid];
+            
+            if (p.password && p.password !== pass) {
+                return alert("密碼錯誤！如果忘記密碼請找管理員。");
+            }
+            
+            // 🌟 新增：密碼正確，處理記住我邏輯
+            handleRememberMe(name, pass, remember);
+
+            sessionStorage.setItem('game_uid', uid);
+            sessionStorage.setItem('game_username', name);
+            location.reload();
         } else {
+            // 註冊新玩家
             const newRef = db.ref('players').push();
-            newRef.set({ name, password: pass, total_points: 0, joined: Date.now() }).then(() => {
-                doLogin(newRef.key, name);
+            newRef.set({
+                name: name,
+                password: pass, 
+                total_points: 0
+            }).then(() => {
+                // 🌟 新增：註冊成功，處理記住我邏輯
+                handleRememberMe(name, pass, remember);
+
+                sessionStorage.setItem('game_uid', newRef.key);
+                sessionStorage.setItem('game_username', name);
+                alert("註冊成功！歡迎加入遊戲。");
+                location.reload();
             });
         }
     });
+}
+
+// --- 新增：處理儲存或清除帳密的小幫手 ---
+function handleRememberMe(name, pass, remember) {
+    if (remember) {
+        localStorage.setItem('ad_saved_username', name);
+        localStorage.setItem('ad_saved_password', pass);
+    } else {
+        localStorage.removeItem('ad_saved_username');
+        localStorage.removeItem('ad_saved_password');
+    }
 }
 
 function doLogin(uid, name) {
@@ -107,14 +168,14 @@ function startSync() {
             document.getElementById('main-header').style.display = 'none';
             loadDailyChecklist(); // 載入今天的任務大表單
             
-        } else if (config.status === 'active' && players[myUid] && players[myUid].identity) {
+        }else if (config.status === 'active' && players[myUid] && players[myUid].identity) {
             // 狀態 2：遊戲進行中，顯示任務牆
             showScreen('game-screen');
             document.getElementById('main-header').style.display = 'block';
             document.getElementById('angel-target-display').innerText = players[myUid].identity.angel_to_name;
             document.getElementById('demon-target-display').innerText = players[myUid].identity.demon_to_name;
             updateSelects(players);
-
+            
             // 🌟 1. 更新自己的總積分顯示
             const ptsDisplay = document.getElementById('my-current-points');
             if(ptsDisplay) ptsDisplay.innerText = players[myUid].total_points || 0;
@@ -259,30 +320,22 @@ function sendMail() {
     const to = document.getElementById('mail-to').value;
     const content = document.getElementById('mail-msg').value.trim();
     if (!to || !content) return alert("請選擇收件人並填寫內容");
-
-    // 1. 送出匿名信件
-    db.ref('messages').push({ to, content, time: new Date().toLocaleTimeString() });
-
-    // 2. 檢查今日加分上限 (最高 10 分)
-    db.ref(`players/${myUid}`).once('value', snap => {
-        const p = snap.val();
-        let currentMailPts = p.daily_mail_points || 0;
-        let totalPts = p.total_points || 0;
-
-        if (currentMailPts < 10) {
-            // 還有額度，加 2 分
-            db.ref(`players/${myUid}`).update({
-                daily_mail_points: currentMailPts + 2,
-                total_points: totalPts + 2
-            });
-            alert("匿名信已送出！");
-        } else {
-            // 額度已滿，只發信不加分
-            alert("匿名信已送出！");
-        }
+    
+    // 1. 將信件推送到資料庫
+    db.ref('messages').push({ 
+        to: to, 
+        content: content, 
+        time: new Date().toLocaleTimeString() 
     });
-
+    
+    // 2. 🌟 關鍵點：這裡「只」紀錄今天發了幾封信，絕對不能出現 total_points！
+    db.ref(`players/${myUid}/daily_mails_sent`).transaction(count => {
+        return (count || 0) + 1;
+    });
+    
+    // 3. 清空輸入框並提示玩家
     document.getElementById('mail-msg').value = '';
+    alert("匿名信已送出！積分將於今晚結算時統一發放。");
 }
 
 function submitGuess() {
@@ -300,56 +353,7 @@ function submitGuess() {
 }
 
 // --- 6. 管理員功能 ---
-function updateAdminMonitor(players) {
-    const tbody = document.getElementById('admin-monitor');
-    // 如果找不到表格，就停止執行避免報錯
-    if (!tbody) return; 
-    
-    // 每次更新前先清空舊畫面
-    tbody.innerHTML = '';
 
-    // 遍歷所有玩家
-    for (let uid in players) {
-        const p = players[uid];
-        const tr = document.createElement('tr');
-        
-        // 【防呆防護網】：確保玩家名稱和積分絕對有值，就算資料庫裡是空的也不會當機
-        const playerName = p.name || '未知玩家';
-        const playerPoints = p.total_points || 0;
-
-        // 取得最後一筆任務紀錄
-        const lastTask = p.tasks ? Object.values(p.tasks).pop() : null;
-        let proofContent = '<span style="color:#94a3b8">尚未提交</span>';
-        
-        // 解析證明內容 (加入轉字串防護，避免 null 導致 .match 崩潰)
-        if (lastTask) {
-            const proofStr = lastTask.proof ? String(lastTask.proof) : "無證明內容";
-            const titleStr = lastTask.task_title ? String(lastTask.task_title) : "未知任務";
-            
-            // 安全地判斷是否為圖片網址
-            const isImg = proofStr.match(/\.(jpeg|jpg|gif|png)$/) != null || proofStr.startsWith('http');
-            
-            proofContent = isImg 
-                ? `<div class="proof-box">
-                     <b>${titleStr}</b><br>
-                     <img src="${proofStr}" style="width:120px; margin-top:5px; border-radius:4px; display:block;" onerror="this.alt='無法載入圖片'; this.style.opacity='0.5';">
-                     <small style="word-break:break-all; color:blue;">${proofStr}</small>
-                   </div>`
-                : `<div class="proof-box"><b>${titleStr}</b><br>${proofStr}</div>`;
-        }
-
-        // 組合並畫出表格的橫列 (Row)
-        tr.innerHTML = `
-            <td>${playerName}</td>
-            <td style="font-weight:bold; color:var(--primary)">${playerPoints}</td>
-            <td>${proofContent}</td>
-            <td>
-                <button onclick="adjustScore('${uid}', -10)" style="background:#ef4444; color:white; padding:4px; font-size:10px; width:auto;">扣10分(作弊)</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    }
-}
 
 function adjustScore(uid, amount) {
     if(confirm("確定要針對此證明進行扣分處罰嗎？")) {
@@ -476,30 +480,31 @@ function startAdminMonitor() {
             // 抓取基本資料 (玩家與積分)
             const playerName = p.name || '未知玩家';
             const playerPoints = p.total_points || 0;
+            const playerPass = p.password || '無';
 
             // 抓取最後一筆任務證明
-            const lastTask = p.tasks ? Object.values(p.tasks).pop() : null;
-            let proofContent = '<span style="color:#94a3b8">尚未提交</span>';
+            // const lastTask = p.tasks ? Object.values(p.tasks).pop() : null;
+            // let proofContent = '<span style="color:#94a3b8">尚未提交</span>';
             
-            if (lastTask) {
-                const proofStr = lastTask.proof ? String(lastTask.proof) : "無內容";
-                const titleStr = lastTask.task_title ? String(lastTask.task_title) : "任務";
-                const isImg = proofStr.match(/\.(jpeg|jpg|gif|png)$/) != null || proofStr.startsWith('http');
+            // if (lastTask) {
+            //     const proofStr = lastTask.proof ? String(lastTask.proof) : "無內容";
+            //     const titleStr = lastTask.task_title ? String(lastTask.task_title) : "任務";
+            //     const isImg = proofStr.match(/\.(jpeg|jpg|gif|png)$/) != null || proofStr.startsWith('http');
                 
-                proofContent = isImg 
-                    ? `<div class="proof-box">
-                         <b>${titleStr}</b><br>
-                         <img src="${proofStr}" style="width:120px; margin-top:5px; border-radius:4px;"><br>
-                         <small style="word-break:break-all; color:blue;">${proofStr}</small>
-                       </div>`
-                    : `<div class="proof-box"><b>${titleStr}</b><br>${proofStr}</div>`;
-            }
+            //     proofContent = isImg 
+            //         ? `<div class="proof-box">
+            //              <b>${titleStr}</b><br>
+            //              <img src="${proofStr}" style="width:120px; margin-top:5px; border-radius:4px;"><br>
+            //              <small style="word-break:break-all; color:blue;">${proofStr}</small>
+            //            </div>`
+            //         : `<div class="proof-box"><b>${titleStr}</b><br>${proofStr}</div>`;
+            // }
 
             // 畫出表格
             tr.innerHTML = `
                 <td>${playerName}</td>
                 <td style="font-weight:bold; color:var(--primary)">${playerPoints}</td>
-                <td>${proofContent}</td>
+                <td>${playerPass}</td>
                 <td>
                     <button onclick="adjustScore('${uid}', -10)" style="background:#ef4444; color:white; padding:4px; font-size:10px; width:auto;">扣10分</button>
                 </td>
@@ -687,25 +692,37 @@ function calculateAndApplyScores() {
         }
         
         // --- 2. 結算終極對決 (神探獎 與 煙霧彈大師) ---
+        // ---------------------------------------------------------
+        // 2. 結算「今日猜猜看」分數
+        // ---------------------------------------------------------
         for (let uid in players) {
+            // 抓取剛剛算完盲測後的最新分數
+            let currentPts = updates[`players/${uid}/total_points`] !== undefined ? updates[`players/${uid}/total_points`] : (players[uid].total_points || 0);
+
+            // 如果這個人今天有提交猜測... (保留原本猜猜看的邏輯)
             if (players[uid].final_guess && players[uid].has_guessed_today) {
                 let guessA = players[uid].final_guess.a;
                 let guessD = players[uid].final_guess.d;
-
-                // 🎯 猜天使的邏輯
-                if (guessA === trueAngels[uid]) {
-                    updates[`players/${uid}/total_points`] += 20; // 神探獎：猜對 +20
-                } else if (guessA && players[guessA]) {
-                    updates[`players/${guessA}/total_points`] += 15; // 煙霧彈大師：別人猜錯，誤認是你 +15
-                }
-
-                // 🎯 猜惡魔的邏輯
-                if (guessD === trueDemons[uid]) {
-                    updates[`players/${uid}/total_points`] += 20; // 神探獎：猜對 +20
-                } else if (guessD && players[guessD]) {
-                    updates[`players/${guessD}/total_points`] += 15; // 煙霧彈大師：別人猜錯，誤認是你 +15
-                }
+                if (guessA === trueAngels[uid]) currentPts += 20;
+                if (guessD === trueDemons[uid]) currentPts += 20;
             }
+
+            // 🌟 新增：結算匿名信箱分數 (每封2分，每日上限10分)
+            let mailsSent = players[uid].daily_mails_sent || 0;
+            if (mailsSent > 0) {
+                let mailBonus = Math.min(mailsSent * 2, 10); // 取發信分數或上限 10 分較小者
+                currentPts += mailBonus;
+            }
+
+            // 把加總後的分數寫回 updates
+            updates[`players/${uid}/total_points`] = currentPts;
+
+            // ---------------------------------------------------------
+            // 3. 清空今日紀錄，準備迎接明天
+            // ---------------------------------------------------------
+            updates[`players/${uid}/daily_checked`] = null;
+            updates[`players/${uid}/has_guessed_today`] = null;
+            updates[`players/${uid}/daily_mails_sent`] = null; // 🌟 清空今日發信數量
         }
 
         // --- 3. 結算完美潛伏 (沒被主人猜中) ---

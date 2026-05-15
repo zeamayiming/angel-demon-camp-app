@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天使惡魔：上帝視角版 v4.0</title>
+    <title>小天使 | 小惡魔 v1.1.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -27,9 +27,21 @@
     <div class="content">
         <div id="login-screen" class="screen active">
             <div style="text-align:center; padding: 40px 0;">
-                <h2 style="color: var(--primary);">👼 天使惡魔：生存戰</h2>
+                <h2 style="color: var(--primary);">👼 小天使 | 小惡魔 😈</h2>
+                
                 <input type="text" id="username" placeholder="請輸入帳號名稱">
-                <input type="password" id="password" placeholder="請輸入密碼">
+                
+                <div style="position: relative; margin: 8px 0;">
+                    <input type="password" id="password" placeholder="請輸入密碼" style="margin: 0; padding-right: 40px;">
+                    <span id="toggle-pwd" onclick="togglePassword()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px;">👁️</span>
+                </div>
+
+                <div style="text-align: left; font-size: 13px; color: #64748b; margin-bottom: 15px; padding-left: 5px;">
+                    <label style="cursor: pointer;">
+                        <input type="checkbox" id="remember-me" style="width: auto; margin-right: 5px;">記住帳號密碼
+                    </label>
+                </div>
+
                 <button class="btn-primary" onclick="login()">進入 / 註冊</button>
                 <p style="color:#94a3b8; font-size:12px; margin-top:15px;">* 首次登入將自動以此密碼完成註冊</p>
             </div>
@@ -61,7 +73,7 @@
             <!-- <div id="tab-quests" class="tab-content active"> -->
             <div id="tab-quests" class="tab-content active">
                 <div class="card angel-card">
-                    <small>😇 你是 <b id="angel-target-display" style="font-size:18px;">?</b> 的小天使：</small>
+                    <small> 👼 你是 <b id="angel-target-display" style="font-size:18px;">?</b> 的小天使：</small>
                     <div class="task-selector">
                         <label>選擇要執行的天使任務：</label>
                         <select id="select-task-angel" onchange="checkCustom('angel')">
@@ -118,7 +130,7 @@
                     <select id="guess-d"></select>
                     <button class="btn-primary" onclick="submitGuess()">提交指認</button>
                 </div>
-                <p style="font-size:12px; color:#ef4444; margin-top:10px;">* 每個身分僅能指認一次，請謹慎選擇！</p>
+                <p style="font-size:12px; color:#ef4444; margin-top:10px;">* 每個身分一天僅能指認一次，請謹慎選擇！</p>
             </div>
 
             </div>
@@ -177,8 +189,7 @@
                     <tr>
                         <th>玩家</th>
                         <th>積分</th>
-                        <!-- <th>最新任務與證明 (含照片預覽)</th> -->
-                        <th>管理動作</th>
+                        <th>密碼</th> <th>管理動作</th>
                     </tr>
                 </thead>
                 <tbody id="admin-monitor"></tbody>
