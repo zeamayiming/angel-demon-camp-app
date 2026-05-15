@@ -125,7 +125,6 @@ function doLogin(uid, name) {
 }
 
 // --- 4. 即時同步監聽 ---
-// --- 4. 即時同步監聽 ---
 function startSync() {
     db.ref('/').on('value', (snapshot) => {
         const data = snapshot.val();
@@ -136,98 +135,97 @@ function startSync() {
             return;
         }
 
-        // 2. 確保 players 存在（如果是空的則給予空物件預設值）
+        // 2. 確保 players 存在
         const players = data.players || {};
         const config = data.camp_config || { status: 'waiting' };
         
-        // 3. 核心防呆：如果網頁覺得自己有登入 (myUid 存在)，但資料庫裡已經沒有這個人了 (被管理員重置)
-        // 必須強制登出並重整，否則畫面會卡死
+        // 3. 核心防呆：如果玩家被重置，強制登出
         if (myUid && !players[myUid]) {
             logout();
             return;
         }
 
-        // 介面切換與資訊更新
-        document.getElementById('user-bar').style.display = 'flex';
-        document.getElementById('bar-username').innerText = myName;
-        document.getElementById('wait-name').innerText = myName;
-        document.getElementById('player-count').innerText = Object.keys(players).length;
+        // 基本介面資訊更新
+        if (document.getElementById('user-bar')) document.getElementById('user-bar').style.display = 'flex';
+        if (document.getElementById('bar-username')) document.getElementById('bar-username').innerText = myName;
+        if (document.getElementById('wait-name')) document.getElementById('wait-name').innerText = myName;
+        if (document.getElementById('player-count')) document.getElementById('player-count').innerText = Object.keys(players).length;
 
-        // 判斷是否進入遊戲畫面
-        if (config.status === 'ended' && players[myUid]) {
-            // 狀態 1：遊戲結束，進入結算揭曉畫面
+        // ---------------------------------------------------------
+        // 核心狀態切換邏輯
+        // ---------------------------------------------------------
+        
+        if (config.status === 'ended') {
+            // 🏆 狀態 1：遊戲結束，顯示榮譽榜
             showScreen('end-screen');
+            document.getElementById('user-bar').style.display = 'none';
             document.getElementById('main-header').style.display = 'none';
-            document.getElementById('final-score').innerText = players[myUid].total_points || 0;
 
-            // 關係回溯：搜尋全體玩家，找出誰的天使/惡魔目標是我
+            // 🌟 填入最終分數
+            if(players[myUid]) {
+                document.getElementById('final-score').innerText = players[myUid].total_points || 0;
+            }
+
+            // 🌟 關鍵：將大獎名單填入翻牌卡片 (解決載入中問題)
+            if (config.final_awards) {
+                document.getElementById('award-mvp').innerText = config.final_awards.mvp.name;
+                document.getElementById('award-angel').innerText = config.final_awards.angel.name;
+                document.getElementById('award-demon').innerText = config.final_awards.demon.name;
+                document.getElementById('award-stealth-angel').innerText = config.final_awards.stealthAngel.name;
+                document.getElementById('award-stealth-demon').innerText = config.final_awards.stealthDemon.name;
+            }
+
+            // 顯示誰是我的天使與惡魔
             let myAngelName = "未指派";
             let myDemonName = "未指派";
-            
             for (let id in players) {
                 if (players[id].identity) {
-                    if (players[id].identity.angel_to === myUid) {
-                        myAngelName = players[id].name;
-                    }
-                    if (players[id].identity.demon_to === myUid) {
-                        myDemonName = players[id].name;
-                    }
+                    if (players[id].identity.angel_to === myUid) myAngelName = players[id].name;
+                    if (players[id].identity.demon_to === myUid) myDemonName = players[id].name;
                 }
             }
-            
-            // 顯示在畫面上
             document.getElementById('my-angel-reveal').innerText = myAngelName;
             document.getElementById('my-demon-reveal').innerText = myDemonName;
 
-        } 
-        else if (config.status === 'daily_settlement') {
+        } else if (config.status === 'daily_settlement') {
+            // 🧩 狀態 2：晚間盲測拼圖畫面
             showScreen('daily-settle-screen');
             document.getElementById('main-header').style.display = 'none';
             
-            // 🌟 新增：檢查玩家是否已經提交過拼圖
             const submitBtn = document.querySelector('#daily-settle-screen button');
-            
             if (players[myUid] && players[myUid].has_submitted_checklist) {
-                // 狀態 A：已經交卷 -> 隱藏題目，按鈕反灰
-                const container = document.getElementById('checklist-container');
-                container.innerHTML = '<div style="text-align:center; padding: 20px; color:#64748b; font-weight:bold;">你已經提交過今日的拼圖囉！<br>請靜候管理員結算。</div>';
-                
+                document.getElementById('checklist-container').innerHTML = '<div style="text-align:center; padding: 20px; color:#64748b; font-weight:bold;">你已經提交過今日的拼圖囉！<br>請靜候管理員結算。</div>';
                 if (submitBtn) {
                     submitBtn.innerText = "今日已提交";
                     submitBtn.disabled = true;
-                    submitBtn.style.background = "#94a3b8"; // 反灰
+                    submitBtn.style.background = "#94a3b8";
                 }
             } else {
-                // 狀態 B：還沒交卷 -> 正常載入題目，按鈕恢復正常
                 loadDailyChecklist(); 
-                
                 if (submitBtn) {
                     submitBtn.innerText = "提交我的拼圖";
                     submitBtn.disabled = false;
-                    submitBtn.style.background = "var(--primary)"; // 恢復主色
+                    submitBtn.style.background = "var(--primary)";
                 }
             }
             
-        }else if (config.status === 'active' && players[myUid] && players[myUid].identity) {
-            // 狀態 2：遊戲進行中，顯示任務牆
+        } else if (config.status === 'active' && players[myUid] && players[myUid].identity) {
+            // 🎮 狀態 3：遊戲進行中 (顯示任務牆、信箱、猜猜看)
             showScreen('game-screen');
             document.getElementById('main-header').style.display = 'block';
-            document.getElementById('angel-target-display').innerText = players[myUid].identity.angel_to_name;
-            document.getElementById('demon-target-display').innerText = players[myUid].identity.demon_to_name;
+            document.getElementById('angel-target-display').innerText = players[myUid].identity.angel_to_name || "無";
+            document.getElementById('demon-target-display').innerText = players[myUid].identity.demon_to_name || "無";
             updateSelects(players);
             
-            // 🌟 1. 更新自己的總積分顯示
+            // 更新個人積分與排行榜
             const ptsDisplay = document.getElementById('my-current-points');
             if(ptsDisplay) ptsDisplay.innerText = players[myUid].total_points || 0;
 
-            // 🌟 2. 計算排行榜 Top 3
             const topBoard = document.getElementById('top-leaderboard');
             if (topBoard) {
-                // 將玩家轉為陣列並依分數由高到低排序
                 const sortedPlayers = Object.values(players)
                     .map(p => ({ name: p.name, points: p.total_points || 0 }))
                     .sort((a, b) => b.points - a.points);
-                
                 topBoard.innerHTML = '';
                 const top3 = sortedPlayers.slice(0, 3);
                 const medals = ['🥇', '🥈', '🥉'];
@@ -236,40 +234,36 @@ function startSync() {
                 });
             }
             
-            // 🔒 每日猜猜看鎖定邏輯
-            const guessBtn = document.querySelector('#tab-guess button'); // 抓取提交按鈕
+            // 猜猜看按鈕鎖定邏輯
+            const guessBtn = document.querySelector('#tab-guess button');
             if (players[myUid].has_guessed_today) {
-                // 如果今天已經猜過：禁用下拉選單與按鈕，並變更樣式
                 document.getElementById('guess-a').disabled = true;
                 document.getElementById('guess-d').disabled = true;
                 if (guessBtn) {
                     guessBtn.innerText = "今日已經提交";
                     guessBtn.disabled = true;
-                    guessBtn.style.background = "#94a3b8"; // 變成反灰狀態
+                    guessBtn.style.background = "#94a3b8";
                 }
             } else {
-                // 如果今天還沒猜：恢復正常狀態
                 document.getElementById('guess-a').disabled = false;
                 document.getElementById('guess-d').disabled = false;
                 if (guessBtn) {
                     guessBtn.innerText = "提交指認";
                     guessBtn.disabled = false;
-                    guessBtn.style.background = "var(--primary)"; // 恢復主色按鈕
+                    guessBtn.style.background = "var(--primary)";
                 }
             }
         } else {
-            // 狀態 3：遊戲尚未開始，停留在等待室
+            // ⏳ 狀態 4：等待室
             showScreen('waiting-screen');
-            document.getElementById('main-header').style.display = 'none';
+            if (document.getElementById('main-header')) document.getElementById('main-header').style.display = 'none';
         }
-
-        // 上帝視角數據更新 (表格結構對了，這裡就會正確顯示了)
-        // updateAdminMonitor(players);
     });
 
-    // 匿名信箱即時監聽維持不變
+    // 匿名信箱即時監聽 (保持不變)
     db.ref('messages').on('value', (snap) => {
         const list = document.getElementById('mailbox-list');
+        if(!list) return;
         list.innerHTML = '<h3>📥 我的收件匣</h3>';
         if (snap.exists()) {
             Object.values(snap.val()).reverse().forEach(m => {
@@ -439,11 +433,63 @@ function revealAll() {
         console.log(res); alert("報告已生成於 Console，並在此顯示：\n\n" + res);
     });
 }
+
 function endGame() {
-    if (confirm("⚠️ 確定要結束營隊遊戲，並向全體玩家揭曉身分嗎？")) {
-        // 將遊戲狀態改為 ended，觸發全體玩家畫面跳轉
-        db.ref('camp_config/status').set('ended');
-    }
+    if (!confirm("⚠️ 確定要結束營隊遊戲，並向全體揭曉身分與大獎嗎？")) return;
+
+    db.ref('players').once('value', snap => {
+        const players = snap.val();
+        let awards = {
+            mvp: { name: "無", score: -1 },
+            angel: { name: "無", score: -1 },
+            demon: { name: "無", score: -1 },
+            stealthAngel: { name: "無", score: -999 },
+            stealthDemon: { name: "從缺", score: -999 }
+        };
+
+        for (let uid in players) {
+            let p = players[uid];
+            
+            // 1. MVP (總分最高)
+            if ((p.total_points || 0) > awards.mvp.score) {
+                awards.mvp = { name: p.name, score: p.total_points };
+            }
+
+            // 2. 最佳守護天使 (認證任務最多)
+            let vAngel = p.verified_angel_tasks || 0;
+            if (vAngel > awards.angel.score) {
+                awards.angel = { name: p.name, score: vAngel };
+            }
+
+            // 3. 最毒小惡魔
+            let vDemon = p.verified_demon_tasks || 0;
+            if (vDemon > awards.demon.score) {
+                awards.demon = { name: p.name, score: vDemon };
+            }
+
+            // 4. 最佳隱形天使 (演算法計算)
+            // 公式：Stealth Score = (V * 20) - (G * 30)
+            let gAngel = p.times_guessed_as_angel || 0;
+            let stealthScore = (vAngel * 20) - (gAngel * 30);
+            // 條件：至少有做任務才具備隱形天使資格
+            if (vAngel > 0 && stealthScore > awards.stealthAngel.score) {
+                awards.stealthAngel = { name: p.name, score: stealthScore };
+            }
+
+            let gDemon = p.times_guessed_as_demon || 0;
+            let stealthDemonScore = (vDemon * 20) - (gDemon * 30);
+            // 條件同上：至少有陷害成功過一次 (V > 0)
+            if (vDemon > 0 && stealthDemonScore > awards.stealthDemon.score) {
+                awards.stealthDemon = { name: p.name, score: stealthDemonScore };
+            }
+        }
+
+        // 把算好的獎項寫入 config 並改變狀態
+        db.ref('camp_config').update({
+            status: 'ended',
+            final_awards: awards
+        });
+    });
 }
 
 // --- 工具函數 ---
@@ -493,6 +539,11 @@ function showAdmin() {
         } else {
             console.warn("提醒：startAdminMonitor 函數尚未定義，無法即時更新表格。");
         }
+
+        // 3. 信箱監聽
+        // if (typeof listenToAdminMessages === "function") {
+            listenToAdminMessages();
+        // }
     } else {
         alert("密碼錯誤！");
     }
@@ -732,6 +783,12 @@ function calculateAndApplyScores() {
             if (isMatch) {
                 updates[`players/${actorId}/total_points`] += 25; // 雙向奔赴
                 updates[`players/${targetId}/total_points`] += 25;
+                
+                // 👇 這裡新增：紀錄成功被目標認證的任務次數 (用於結算最佳天使與惡魔)
+                // 注意：ev.type 會是 'angel' 或 'demon'，所以會自動存成 verified_angel_tasks 或 verified_demon_tasks
+                let currentTaskCount = players[actorId][`verified_${ev.type}_tasks`] || 0;
+                updates[`players/${actorId}/verified_${ev.type}_tasks`] = currentTaskCount + 1;
+
             } else {
                 updates[`players/${actorId}/total_points`] += 10; // 默默付出
             }
@@ -778,17 +835,26 @@ function calculateAndApplyScores() {
                 let myDemonTarget = players[uid].identity.demon_to;
 
                 // 抓取「我的目標們」今天的猜測結果
-let angelTargetGuess = (players[myAngelTarget] && players[myAngelTarget].final_guess && players[myAngelTarget].has_guessed_today) ? players[myAngelTarget].final_guess.a : null;
+                let angelTargetGuess = (players[myAngelTarget] && players[myAngelTarget].final_guess && players[myAngelTarget].has_guessed_today) ? players[myAngelTarget].final_guess.a : null;
 
-let demonTargetGuess = (players[myDemonTarget] && players[myDemonTarget].final_guess && players[myDemonTarget].has_guessed_today) ? players[myDemonTarget].final_guess.d : null;
+                let demonTargetGuess = (players[myDemonTarget] && players[myDemonTarget].final_guess && players[myDemonTarget].has_guessed_today) ? players[myDemonTarget].final_guess.d : null;
 
                 // 🥷 完美潛伏：我守護的人，沒有猜中我是他的天使 (給一半 15 分)
                 if (angelTargetGuess !== uid) {
                     updates[`players/${uid}/total_points`] += 15;
+                } else {
+                    // 👇 這裡新增：糟糕！被守護的對象猜中了，增加被猜中次數 (用於結算最佳隱形天使)
+                    let currentGuessedAsAngel = players[uid].times_guessed_as_angel || 0;
+                    updates[`players/${uid}/times_guessed_as_angel`] = currentGuessedAsAngel + 1;
                 }
+
                 // 🥷 完美潛伏：我捉弄的人，沒有猜中我是他的惡魔 (給另一半 15 分，全瞞過就是 +30)
                 if (demonTargetGuess !== uid) {
                     updates[`players/${uid}/total_points`] += 15;
+                } else {
+                    // 👇 這裡新增：糟糕！被陷害的對象猜中了，增加被猜中次數 (用於結算最佳隱形惡魔)
+                    let currentGuessedAsDemon = players[uid].times_guessed_as_demon || 0;
+                    updates[`players/${uid}/times_guessed_as_demon`] = currentGuessedAsDemon + 1;
                 }
             }
 
@@ -823,4 +889,166 @@ function deletePlayer(targetUid) {
             alert("刪除失敗，請檢查網路連線或權限設定。");
         });
     }
+}
+
+// 💬 發送訊息給管理員
+function sendToAdmin() {
+    const content = document.getElementById('admin-msg-content').value.trim();
+    // 判斷玩家選了實名還是匿名
+    const isAnonymous = document.querySelector('input[name="admin-msg-type"]:checked').value === 'anonymous';
+
+    if (!content) {
+        alert("⚠️ 請輸入想對上帝說的話！");
+        return;
+    }
+
+    // 決定顯示名稱：如果是匿名就顯示幽靈，否則顯示真實玩家名稱
+    const senderName = isAnonymous ? "👻 匿名玩家" : myName;
+
+    // 將資料推送到專屬的 admin_messages 節點
+    const msgRef = db.ref('admin_messages').push();
+    msgRef.set({
+        sender: senderName,
+        senderUid: isAnonymous ? "anonymous" : myUid,
+        content: content,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+        alert("✅ 訊息已成功發送給上帝！");
+        document.getElementById('admin-msg-content').value = ""; // 清空輸入框
+    }).catch((error) => {
+        console.error("發送失敗:", error);
+        alert("❌ 發送失敗，請稍後再試。");
+    });
+}
+
+// 📨 管理員接收訊息即時監聽
+function listenToAdminMessages() {
+    console.log("系統：上帝收件匣監聽已啟動...");
+    
+    db.ref('admin_messages').orderByChild('timestamp').on('value', (snap) => {
+        const msgListContainer = document.getElementById('admin-msg-list');
+        if (!msgListContainer) return;
+
+        if (!snap.exists()) {
+            msgListContainer.innerHTML = '<p style="color: #94a3b8; font-size: 12px; text-align: center;">目前沒有新訊息</p>';
+            return;
+        }
+
+        let html = '';
+        snap.forEach((child) => {
+            const msg = child.val();
+            const msgId = child.key; // 🔑 取得這則訊息在資料庫裡的專屬 ID
+            
+            const timeString = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            const isAnon = msg.senderUid === "anonymous";
+            const cardStyle = isAnon 
+                ? "background: #ffffff; border-left: 4px solid #94a3b8;" 
+                : "background: #f3e8ff; border-left: 4px solid #8b5cf6;";
+            const nameColor = isAnon ? "#64748b" : "#8b5cf6";
+
+            // 加入了 position: relative 與小垃圾桶按鈕
+            html = `
+            <div style="${cardStyle} padding: 10px; border-radius: 4px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                    <strong style="color: ${nameColor};">${msg.sender}</strong>
+                    <span style="color: #94a3b8; margin-right: 20px;">${timeString}</span>
+                </div>
+                <div style="color: #334155; font-size: 14px; white-space: pre-wrap; line-height: 1.4; padding-right: 20px;">${msg.content}</div>
+                
+                <button onclick="deleteSingleAdminMessage('${msgId}')" style="position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.5;" title="刪除此訊息" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'">🗑️</button>
+            </div>
+            ` + html;
+        });
+        
+        msgListContainer.innerHTML = html;
+    });
+}
+
+// 🗑️ 清空所有上帝訊息
+function clearAdminMessages() {
+    if (confirm("🚨 確定要清空「上帝收件匣」的所有訊息嗎？此動作無法復原。")) {
+        db.ref('admin_messages').remove()
+            .then(() => alert("✅ 已清空所有訊息"))
+            .catch(err => alert("❌ 清空失敗: " + err));
+    }
+}
+
+// 🗑️ 刪除單一上帝訊息
+function deleteSingleAdminMessage(msgId) {
+    if (confirm("確定要刪除這條訊息嗎？")) {
+        // 針對特定 ID 的訊息進行移除
+        db.ref('admin_messages/' + msgId).remove()
+            .catch(err => alert("❌ 刪除失敗: " + err));
+    }
+}
+
+let isLeaderboardListening = false; // 🌟 避免重複啟動監聽的開關
+
+// 🏆 啟動並監聽匿名排行榜
+function listenToLeaderboard() {
+    if (isLeaderboardListening) return; // 如果已經啟動過，就不要重複啟動
+    isLeaderboardListening = true;
+
+    db.ref('players').on('value', snap => {
+        const listContainer = document.getElementById('leaderboard-list');
+        if (!listContainer) return;
+
+        // 🌟 防呆：如果資料庫完全沒資料，替換掉「載入中」文字
+        if (!snap.exists()) {
+            listContainer.innerHTML = '<p style="text-align: center; color: #94a3b8; font-size: 13px;">目前還沒有任何玩家資料喔！</p>';
+            return;
+        }
+
+        const players = snap.val();
+        let playerArr = [];
+
+        // 1. 把所有玩家資料轉成陣列
+        for (let uid in players) {
+            // 排除掉管理員帳號
+            if (players[uid].name !== 'admin') { 
+                playerArr.push({
+                    points: players[uid].total_points || 0
+                });
+            }
+        }
+
+        // 2. 依照分數由高到低排序 (b - a)
+        playerArr.sort((a, b) => b.points - a.points);
+
+        // 3. 只取前 5 名
+        const top5 = playerArr.slice(0, 5);
+
+        // 4. 定義匿名代號與獎牌
+        const anonymousNames = ["🤫 神秘卷王", "👻 潛伏大師", "🥷 隱形殺手", "🕵️ 未知高手", "🎭 幕後黑手"];
+        const medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"];
+
+        // 5. 生成 HTML 畫面
+        let html = '';
+        if (top5.length === 0) {
+            html = '<p style="text-align: center; color: #94a3b8; font-size: 13px;">目前還沒有人有積分喔！</p>';
+        } else {
+            top5.forEach((p, index) => {
+                let bg = index === 0 ? "linear-gradient(135deg, #fef08a, #fde047)" : 
+                         index === 1 ? "linear-gradient(135deg, #e2e8f0, #cbd5e1)" : 
+                         index === 2 ? "linear-gradient(135deg, #fed7aa, #fdba74)" : "#ffffff";
+                let textColor = index < 3 ? "#854d0e" : "#475569";
+                let border = index < 3 ? "none" : "1px solid #cbd5e1";
+
+                html += `
+                <div style="background: ${bg}; border: ${border}; padding: 12px 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">${medals[index]}</span>
+                        <strong style="color: ${textColor}; font-size: 15px;">${anonymousNames[index]}</strong>
+                    </div>
+                    <div style="font-size: 18px; font-weight: bold; color: ${textColor};">
+                        ${p.points} <span style="font-size: 12px; font-weight: normal;">分</span>
+                    </div>
+                </div>
+                `;
+            });
+        }
+
+        listContainer.innerHTML = html;
+    });
 }

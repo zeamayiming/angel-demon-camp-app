@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小天使 | 小惡魔 v1.2.0</title>
+    <title>小天使 | 小惡魔 v1.3.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -22,6 +22,9 @@
             <li onclick="switchTab('tab-quests')" id="btn-tab-quests" class="active">任務牆</li>
             <li onclick="switchTab('tab-mail')" id="btn-tab-mail">匿名信箱</li>
             <li onclick="switchTab('tab-guess')" id="btn-tab-guess">今日猜猜看</li>
+            <li onclick="switchTab('tab-leaderboard'); listenToLeaderboard();" id="btn-tab-leaderboard">排行榜</li>
+            <!-- <li onclick="switchTab('tab-leaderboard')" id="btn-tab-leaderboard">排行榜</li> -->
+            <li onclick="switchTab('tab-admin-msg')" id="btn-tab-admin-msg">聯絡我們</li>
         </ul>
     </header>
 
@@ -63,12 +66,12 @@
                     <small style="color: #64748b; font-weight: bold;">🏆 我的總積分</small>
                     <div id="my-current-points" style="font-size: 28px; color: var(--primary); font-weight: bold; margin-top: 5px;">0</div>
                 </div>
-                <div style="flex: 1.5; background: #fff; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <small style="color: #64748b; font-weight: bold;">🔥 當前風雲榜 (Top 3)</small>
-                    <ol id="top-leaderboard" style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #333; line-height: 1.6;">
-                        <li>載入中...</li>
-                    </ol>
-                </div>
+                <!-- <div style="flex: 1.5; background: #fff; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"> -->
+                    <!-- <small style="color: #64748b; font-weight: bold;">🔥 當前風雲榜 (Top 3)</small> -->
+                    <!-- <ol id="top-leaderboard" style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #333; line-height: 1.6;"> -->
+                        <!-- <li>載入中...</li> -->
+                    <!-- </ol> -->
+                <!-- </div> -->
             </div>
 
             <!-- <div id="tab-quests" class="tab-content active"> -->
@@ -109,7 +112,43 @@
 
             </div>
 
+            <div id="tab-admin-msg" class="tab-content" style="display: none;">
+                <h3 style="color: #8b5cf6;">💬 聯繫我們</h3>
+                <p style="font-size: 13px; color: #64748b;">有遊戲問題、想檢舉作弊，或是想對我們說的話，都可以在這裡發送。</p>
+                
+                <textarea id="admin-msg-content" rows="4" placeholder="請輸入你要傳達給我們的訊息..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-family: inherit; resize: vertical;"></textarea>
+                
+                <div style="margin-bottom: 15px; font-size: 14px; background: #f8fafc; padding: 10px; border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="admin-msg-type" value="real" checked> 👤 實名發送 <span style="font-size:12px;color:#94a3b8;">(我們會知道你是誰)</span>
+                    </label>
+                    <label style="display: block; cursor: pointer;">
+                        <input type="radio" name="admin-msg-type" value="anonymous"> 👻 匿名發送 <span style="font-size:12px;color:#94a3b8;">(我們也不知道你是誰)</span>
+                    </label>
+                </div>
+                
+                <button onclick="sendToAdmin()" style="background: #8b5cf6; color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">發送</button>
+            </div>
 
+            <div id="tab-leaderboard" class="tab-content" style="display: none;">
+                <h3 style="color: #d97706; margin-bottom: 5px;">🏆 排行榜 (Top 5)</h3>
+                <p style="font-size: 13px; color: #64748b; margin-top: 0; margin-bottom: 20px;">
+                    目前只顯示全營隊積分最高的前五名。為了保護當事人，名字已被隱藏... 誰才是目前的隱藏卷王？
+                </p>
+                
+                <div id="leaderboard-list">
+                    <p style="text-align: center; color: #94a3b8; font-size: 13px;">資料載入中...</p>
+                </div>
+                
+                <div style="margin-top: 30px; padding: 15px; background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h4 style="margin: 0 0 10px 0; color: #fbbf24; letter-spacing: 1px;">🌟 最終結算大獎預告 🌟</h4>
+                    <p style="font-size: 12px; margin: 0; color: #cbd5e1; line-height: 1.6;">
+                        最後一天將解鎖所有人的真實身分！<br>
+                        並頒發「最佳小天使」與「最佳小惡魔」等排名！<br>
+                        敬請期待結算典禮！
+                    </p>
+                </div>
+            </div>
 
 
 
@@ -165,12 +204,47 @@
                         <div id="my-demon-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
                     </div>
                 </div>
+                <h3 style="text-align: center; color: #d97706;">🏆 營隊榮譽榜 🏆</h3>
+<p style="font-size: 12px; color: #64748b; text-align: center;">點擊卡片揭曉得獎者！</p>
+
+<div class="award-grid">
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+            <div class="flip-card-front"><h3>🌟<br>全場 MVP</h3></div>
+            <div class="flip-card-back"><h3 id="award-mvp">載入中</h3><small>總積分最高</small></div>
+        </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+            <div class="flip-card-front"><h3>👼<br>最佳小天使</h3></div>
+            <div class="flip-card-back"><h3 id="award-angel">載入中</h3><small>暖心任務最多</small></div>
+        </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+            <div class="flip-card-front"><h3>🥷👼<br>最佳隱形天使</h3></div>
+            <div class="flip-card-back"><h3 id="award-stealth-angel">載入中</h3><small>神不知鬼不覺</small></div>
+        </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+            <div class="flip-card-front"><h3>😈<br>最佳小惡魔</h3></div>
+            <div class="flip-card-back"><h3 id="award-demon">載入中</h3><small>陷害成功最多</small></div>
+        </div>
+    </div>
+    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+            <div class="flip-card-front"><h3>🥷😈<br>最佳隱形惡魔</h3></div>
+            <div class="flip-card-back"><h3 id="award-stealth-demon">載入中</h3><small>做壞事沒被抓包</small></div>
+        </div>
+    </div>
+</div>
             </div>
 
 <div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px;">ADMIN</div>
         
         <div id="admin-panel" class="admin-section">
-            <h3 style="margin-top:0;">👁️ 上帝視角控制台</h3>
+            <h3 style="margin-top:0;">👁️ 管理員控制台</h3>
             
             <button style="background:#475569; color:white;" onclick="assignRoles()">1. 隨機分配身分並同步開始</button>
             <button style="background:#be123c; color:white;" onclick="resetGame()">2. 徹底重置 (清空所有資料)</button>
@@ -252,6 +326,18 @@
 
     <button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="publishAndStartSettlement()">📢 2. 發布勾選任務並強制玩家作答</button>
     <button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 3. 結算全體分數並返回遊戲</button>
+</div>
+
+<hr style="margin: 20px 0; border: 0; border-top: 2px dashed #8b5cf6; opacity: 0.3;">
+<div id="admin-mailbox-section" style="text-align: left;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h4 style="margin: 0; color: #8b5cf6;">📨 收件匣</h4>
+        <button onclick="clearAdminMessages()" style="width: 250px; background: #ef4444; color: white; border: none; padding: 4px 8x; border-radius: 4px; font-size: 11px; cursor: pointer;">🗑️ 清空所有訊息</button>
+    </div>
+    
+    <div id="admin-msg-list" style="background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; max-height: 300px; overflow-y: auto;">
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">尚未收到任何玩家訊息...</p>
+    </div>
 </div>
 
 <script src="script.js"></script>
