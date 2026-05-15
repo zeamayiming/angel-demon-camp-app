@@ -56,14 +56,14 @@ if (myUid) startSync();
 function login() {
     const name = document.getElementById('username').value.trim();
     const pass = document.getElementById('password').value.trim();
-    const remember = document.getElementById('remember-me').checked; // 🌟 新增：抓取是否有打勾
+    const remember = document.getElementById('remember-me').checked;
 
     if (!name || !pass) return alert("請填寫完整帳密");
 
-    // 去資料庫找這個名字
+    // 🌟 正確寫法：透過 orderByChild 精準搜尋玩家名稱
     db.ref('players').orderByChild('name').equalTo(name).once('value', (snap) => {
         if (snap.exists()) {
-            // 帳號已存在 -> 檢查密碼
+            // 👤 狀況 A：帳號存在，執行【登入】邏輯
             let uid = Object.keys(snap.val())[0];
             let p = snap.val()[uid];
             
@@ -71,27 +71,36 @@ function login() {
                 return alert("密碼錯誤！如果忘記密碼請找管理員。");
             }
             
-            // 🌟 新增：密碼正確，處理記住我邏輯
+            // 密碼正確，處理記住我並登入
             handleRememberMe(name, pass, remember);
-
             sessionStorage.setItem('game_uid', uid);
             sessionStorage.setItem('game_username', name);
             location.reload();
         } else {
-            // 註冊新玩家
-            const newRef = db.ref('players').push();
-            newRef.set({
-                name: name,
-                password: pass, 
-                total_points: 0
-            }).then(() => {
-                // 🌟 新增：註冊成功，處理記住我邏輯
-                handleRememberMe(name, pass, remember);
+            // 👤 狀況 B：帳號不存在，準備【註冊】
+            // 🌟 防護鎖：先檢查大廳的遊戲狀態 (正確路徑：camp_config/status)
+            db.ref('camp_config/status').once('value', (statusSnap) => {
+                const gameStatus = statusSnap.val() || 'waiting';
+                
+                // 如果不是 waiting，代表遊戲已經開始，阻擋註冊！
+                if (gameStatus !== 'waiting') {
+                    alert(`⛔ 遊戲已經開始，停止開放新帳號註冊！\n\n💡 如果你是已經註冊過的玩家，請檢查你的「玩家名稱」是否有錯字或多打了空白喔！`);
+                    return;
+                }
 
-                sessionStorage.setItem('game_uid', newRef.key);
-                sessionStorage.setItem('game_username', name);
-                alert("註冊成功！歡迎加入遊戲。");
-                location.reload();
+                // 如果還在 waiting，放行註冊
+                const newRef = db.ref('players').push();
+                newRef.set({
+                    name: name,
+                    password: pass, 
+                    total_points: 0
+                }).then(() => {
+                    handleRememberMe(name, pass, remember);
+                    sessionStorage.setItem('game_uid', newRef.key);
+                    sessionStorage.setItem('game_username', name);
+                    alert("註冊成功！歡迎加入遊戲。");
+                    location.reload();
+                });
             });
         }
     });
@@ -539,6 +548,7 @@ function startAdminMonitor() {
                 <td>
                     <button onclick="adjustScore('${uid}', -10)" style="background:#ef4444; color:white; padding:4px; font-size:10px; width:auto;">扣10分</button>
                 </td>
+                <td><button onclick="deletePlayer('${uid}')" style="background:#ef4444; color:white; border:none; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:12px;">刪除</button></td>
             `;
             tbody.appendChild(tr);
         }
@@ -797,4 +807,20 @@ let demonTargetGuess = (players[myDemonTarget] && players[myDemonTarget].final_g
             alert("✅ 結算完成！分數已發放，匿名信箱額度與猜測機制已重置，玩家已返回遊戲畫面。");
         });
     });
+}
+
+// 🌟 管理員專用：刪除單一玩家
+function deletePlayer(targetUid) {
+    // 雙重確認，避免手滑點錯
+    const confirmDelete = confirm(`⚠️ 警告：確定要註銷/刪除玩家「${targetUid}」嗎？\n刪除後該玩家將無法登入，且所有積分與紀錄會永久消失！`);
+    
+    if (confirmDelete) {
+        db.ref(`players/${targetUid}`).remove().then(() => {
+            alert(`✅ 玩家「${targetUid}」已被成功刪除！`);
+            // Firebase 會自動觸發資料庫變動，表格會自動重繪，不用手動重新整理
+        }).catch((error) => {
+            console.error("刪除失敗:", error);
+            alert("刪除失敗，請檢查網路連線或權限設定。");
+        });
+    }
 }
