@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小天使 | 小惡魔 v1.1.1</title>
+    <title>小天使 | 小惡魔 v1.1.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -131,10 +131,22 @@
                     <select id="guess-d"></select>
                     <button class="btn-primary" onclick="submitGuess()">提交指認</button>
                 </div>
-                <p style="font-size:12px; color:#ef4444; margin-top:10px;">* 每個身分一天僅能指認一次，請謹慎選擇！</p>
+                    <p style="font-size:12px; color:#ef4444; margin-top:10px;">* 每個身分一天僅能指認一次，請謹慎選擇！</p>
             </div>
 
             </div>
+ <div id="daily-settle-screen" class="screen">
+    <div style="text-align:center; padding: 20px 0;">
+        <h2 style="color: var(--primary);">🔍 晚間結算積分</h2>
+        <p style="font-size:14px; color:#64748b;">請回想今天一整天，以下哪些事情<b>確實發生在你身上</b>？<br></p>
+        
+        <div id="checklist-container" style="text-align:left; background:#f1f5f9; padding:20px; border-radius:12px; margin-bottom:15px; font-size:16px; line-height:1.8;">
+            </div>
+        
+        <button class="btn-primary" onclick="submitChecklist()">提交我的拼圖</button>
+    </div>
+</div> 
+
             <div id="end-screen" class="screen">
                 <div style="text-align:center; padding: 20px 0;">
                     <h2 style="color: var(--primary);">🎉 遊戲結束！真相大白 🎉</h2>
@@ -222,17 +234,7 @@
             </table>
         </div> -->
 
- <div id="daily-settle-screen" class="screen">
-    <div style="text-align:center; padding: 20px 0;">
-        <h2 style="color: var(--primary);">🔍 晚間結算積分</h2>
-        <p style="font-size:14px; color:#64748b;">請回想今天一整天，以下哪些事情<b>確實發生在你身上</b>？<br><small>(勾選正確與對方配對成功，雙方各得 25 分！)</small></p>
-        
-        <div id="checklist-container" style="text-align:left; background:#f1f5f9; padding:20px; border-radius:12px; margin-bottom:15px; font-size:16px; line-height:1.8;">
-            </div>
-        
-        <button class="btn-primary" onclick="submitChecklist()">提交我的拼圖</button>
-    </div>
-</div> 
+
 <div id="admin-panel" class="admin-section">
 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
     <h4 style="margin:0 0 10px 0; color:#475569;">🧩 晚間盲測審核區</h4>

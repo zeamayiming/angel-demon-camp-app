@@ -172,10 +172,32 @@ function startSync() {
 
         } 
         else if (config.status === 'daily_settlement') {
-            // 進入晚間盲測結算
             showScreen('daily-settle-screen');
             document.getElementById('main-header').style.display = 'none';
-            loadDailyChecklist(); // 載入今天的任務大表單
+            
+            // 🌟 新增：檢查玩家是否已經提交過拼圖
+            const submitBtn = document.querySelector('#daily-settle-screen button');
+            
+            if (players[myUid] && players[myUid].has_submitted_checklist) {
+                // 狀態 A：已經交卷 -> 隱藏題目，按鈕反灰
+                const container = document.getElementById('checklist-container');
+                container.innerHTML = '<div style="text-align:center; padding: 20px; color:#64748b; font-weight:bold;">你已經提交過今日的拼圖囉！<br>請靜候管理員結算。</div>';
+                
+                if (submitBtn) {
+                    submitBtn.innerText = "今日已提交";
+                    submitBtn.disabled = true;
+                    submitBtn.style.background = "#94a3b8"; // 反灰
+                }
+            } else {
+                // 狀態 B：還沒交卷 -> 正常載入題目，按鈕恢復正常
+                loadDailyChecklist(); 
+                
+                if (submitBtn) {
+                    submitBtn.innerText = "提交我的拼圖";
+                    submitBtn.disabled = false;
+                    submitBtn.style.background = "var(--primary)"; // 恢復主色
+                }
+            }
             
         }else if (config.status === 'active' && players[myUid] && players[myUid].identity) {
             // 狀態 2：遊戲進行中，顯示任務牆
@@ -233,7 +255,7 @@ function startSync() {
         }
 
         // 上帝視角數據更新 (表格結構對了，這裡就會正確顯示了)
-        updateAdminMonitor(players);
+        // updateAdminMonitor(players);
     });
 
     // 匿名信箱即時監聽維持不變
@@ -649,11 +671,16 @@ function loadDailyChecklist() {
 // }
 
 // 玩家送出自己的拼圖勾選
+// 玩家送出自己的拼圖勾選
 function submitChecklist() {
     const checkboxes = document.querySelectorAll('#checklist-container input:checked');
     const checkedTasks = Array.from(checkboxes).map(cb => cb.value);
     
-    db.ref(`players/${myUid}/daily_checked`).set(checkedTasks).then(() => {
+    // 🌟 修改：同時更新勾選清單與「已提交」標記
+    db.ref(`players/${myUid}`).update({
+        daily_checked: checkedTasks,
+        has_submitted_checklist: true 
+    }).then(() => {
         alert("拼圖已送出！請等待管理員公佈結果。");
     });
 }
@@ -689,7 +716,7 @@ function calculateAndApplyScores() {
             const targetId = ev.target;
             const taskName = ev.task;
             
-            const targetChecked = players[targetId].daily_checked || [];
+            const targetChecked = (players[targetId] && players[targetId].daily_checked) ? players[targetId].daily_checked : [];
             const isMatch = targetChecked.includes(taskName);
             
             if (isMatch) {
@@ -741,8 +768,9 @@ function calculateAndApplyScores() {
                 let myDemonTarget = players[uid].identity.demon_to;
 
                 // 抓取「我的目標們」今天的猜測結果
-                let angelTargetGuess = (players[myAngelTarget].final_guess && players[myAngelTarget].has_guessed_today) ? players[myAngelTarget].final_guess.a : null;
-                let demonTargetGuess = (players[myDemonTarget].final_guess && players[myDemonTarget].has_guessed_today) ? players[myDemonTarget].final_guess.d : null;
+let angelTargetGuess = (players[myAngelTarget] && players[myAngelTarget].final_guess && players[myAngelTarget].has_guessed_today) ? players[myAngelTarget].final_guess.a : null;
+
+let demonTargetGuess = (players[myDemonTarget] && players[myDemonTarget].final_guess && players[myDemonTarget].has_guessed_today) ? players[myDemonTarget].final_guess.d : null;
 
                 // 🥷 完美潛伏：我守護的人，沒有猜中我是他的天使 (給一半 15 分)
                 if (angelTargetGuess !== uid) {
@@ -758,6 +786,7 @@ function calculateAndApplyScores() {
             updates[`players/${uid}/daily_checked`] = null;
             updates[`players/${uid}/has_guessed_today`] = null;
             updates[`players/${uid}/daily_mail_points`] = null; // 🔓 重新開放明天的 10 分信箱額度
+            updates[`players/${uid}/has_submitted_checklist`] = null;
         }
         
         // 清空事件，並把遊戲切回 active 讓大家看到新分數
