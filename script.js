@@ -38,6 +38,15 @@ window.onload = function() {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+firebase.auth().signInAnonymously()
+    .then(() => {
+        console.log("✅ 成功取得 Firebase 臨時訪客證！現在可以安全讀寫資料庫了。");
+        // 這裡可以放你原本要在網頁載入時執行的資料庫讀取動作 (例如載入人數等)
+    })
+    .catch((error) => {
+        console.error("❌ 匿名登入失敗：", error.code, error.message);
+    });
+
 // --- 2. 核心變數 ---
 let myUid = sessionStorage.getItem('game_uid');
 let myName = sessionStorage.getItem('game_username');
