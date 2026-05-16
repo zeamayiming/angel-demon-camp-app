@@ -221,16 +221,17 @@ button {
 }
 
 /* 3D 翻牌特效 */
-.award-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 20px;
+/* --- 🏆 3D 翻牌與 Swiper 專用樣式 --- */
+.award-swiper {
+    width: 100%;
+    min-height: 180px;
+    padding: 20px 0;
 }
 .flip-card {
-    background-color: transparent;
+    width: 100%;
     height: 140px;
-    perspective: 1000px; /* 創造 3D 空間 */
+    background-color: transparent;
+    perspective: 1000px;
     cursor: pointer;
 }
 .flip-card-inner {
@@ -241,7 +242,6 @@ button {
     transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
     transform-style: preserve-3d;
 }
-/* 加上 .flipped class 時翻轉 */
 .flip-card.flipped .flip-card-inner {
     transform: rotateY(180deg);
 }

@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小天使 | 小惡魔 v1.3.0</title>
+    <title>小天使 | 小惡魔 v1.4.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 </head>
 <body>
 
@@ -204,46 +205,74 @@
                         <div id="my-demon-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
                     </div>
                 </div>
-                <h3 style="text-align: center; color: #d97706;">🏆 營隊榮譽榜 🏆</h3>
+                <h3 style="text-align: center; color: #d97706;">🏆 榮譽榜 🏆</h3>
 <p style="font-size: 12px; color: #64748b; text-align: center;">點擊卡片揭曉得獎者！</p>
 
-<div class="award-grid">
-    <div class="flip-card" onclick="this.classList.toggle('flipped')">
-        <div class="flip-card-inner">
-            <div class="flip-card-front"><h3>🌟<br>全場 MVP</h3></div>
-            <div class="flip-card-back"><h3 id="award-mvp">載入中</h3><small>總積分最高</small></div>
+<div style="text-align: center;">
+    <!-- <h2 style="color: var(--primary); margin-bottom: 20px;">🏆 結算與頒獎 🏆</h2> -->
+
+    <div class="swiper award-swiper" style="width: 100%; min-height: 180px; padding: 20px 0; overflow: hidden;">
+        <div class="swiper-wrapper">
+
+            <div class="swiper-slide" style="display: flex; justify-content: center;">
+                <div class="flip-card" style="width: 90%;" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front"><h3>🌟<br>全場 MVP</h3></div>
+                        <div class="flip-card-back"><h3 id="award-mvp">載入中</h3><small>總積分最高</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swiper-slide" style="display: flex; justify-content: center;">
+                <div class="flip-card" style="width: 90%;" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front"><h3>👼<br>最佳小天使</h3></div>
+                        <div class="flip-card-back"><h3 id="award-angel">載入中</h3><small>暖心任務最多</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swiper-slide" style="display: flex; justify-content: center;">
+                <div class="flip-card" style="width: 90%;" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front"><h3>🥷👼<br>最佳隱形天使</h3></div>
+                        <div class="flip-card-back"><h3 id="award-stealth-angel">載入中</h3><small>神不知鬼不覺</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swiper-slide" style="display: flex; justify-content: center;">
+                <div class="flip-card" style="width: 90%;" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front"><h3>😈<br>最佳小惡魔</h3></div>
+                        <div class="flip-card-back"><h3 id="award-demon">載入中</h3><small>陷害成功最多</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swiper-slide" style="display: flex; justify-content: center;">
+                <div class="flip-card" style="width: 90%;" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front"><h3>🥷😈<br>最佳隱形惡魔</h3></div>
+                        <div class="flip-card-back"><h3 id="award-stealth-demon">載入中</h3><small>做壞事沒被抓包</small></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
-    <div class="flip-card" onclick="this.classList.toggle('flipped')">
-        <div class="flip-card-inner">
-            <div class="flip-card-front"><h3>👼<br>最佳小天使</h3></div>
-            <div class="flip-card-back"><h3 id="award-angel">載入中</h3><small>暖心任務最多</small></div>
-        </div>
-    </div>
-    <div class="flip-card" onclick="this.classList.toggle('flipped')">
-        <div class="flip-card-inner">
-            <div class="flip-card-front"><h3>🥷👼<br>最佳隱形天使</h3></div>
-            <div class="flip-card-back"><h3 id="award-stealth-angel">載入中</h3><small>神不知鬼不覺</small></div>
-        </div>
-    </div>
-    <div class="flip-card" onclick="this.classList.toggle('flipped')">
-        <div class="flip-card-inner">
-            <div class="flip-card-front"><h3>😈<br>最佳小惡魔</h3></div>
-            <div class="flip-card-back"><h3 id="award-demon">載入中</h3><small>陷害成功最多</small></div>
-        </div>
-    </div>
-    <div class="flip-card" onclick="this.classList.toggle('flipped')">
-        <div class="flip-card-inner">
-            <div class="flip-card-front"><h3>🥷😈<br>最佳隱形惡魔</h3></div>
-            <div class="flip-card-back"><h3 id="award-stealth-demon">載入中</h3><small>做壞事沒被抓包</small></div>
-        </div>
-    </div>
+    
+    <button style="margin-top: 20px; background: #64748b; color: white;" onclick="logout()">返回首頁</button>
 </div>
             </div>
 
 <div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px;">ADMIN</div>
-        
         <div id="admin-panel" class="admin-section">
+            <div id="admin-winner-board" style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #cbd5e1; text-align: left;">
+                <h4 style="margin: 0 0 10px 0; color: #334155;">👑 當前預測得獎名單 (即時更新)</h4>
+                <div id="award-list" style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px;">
+                    </div>
+            </div>
             <h3 style="margin-top:0;">👁️ 管理員控制台</h3>
             
             <button style="background:#475569; color:white;" onclick="assignRoles()">1. 隨機分配身分並同步開始</button>
@@ -270,13 +299,18 @@
 
             <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
 
-            <h4>📊 玩家即時狀態監控</h4>
+            <h3 style="color: var(--primary); margin-bottom: 5px;">👥 玩家即時狀態監控 (依積分排序)</h3>
+            <div id="admin-day-indicator" style="font-size: 13px; color: #475569; margin-bottom: 10px; background: #eff6ff; padding: 6px 12px; border-radius: 6px; border-left: 4px solid var(--primary); display: inline-block;">📅 載入遊戲天數中...</div>
+            
             <table class="admin-table">
                 <thead>
                     <tr>
                         <th>玩家</th>
                         <th>積分</th>
-                        <th>密碼</th> <th>管理動作</th> <th>註銷</th>
+                        <th>密碼</th> 
+                        <th>積分來源</th>
+                        <th>管理動作</th> 
+                        <th>註銷</th>
                     </tr>
                 </thead>
                 <tbody id="admin-monitor"></tbody>
@@ -339,6 +373,8 @@
         <p style="color: #94a3b8; font-size: 12px; text-align: center;">尚未收到任何玩家訊息...</p>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
 <script src="script.js"></script>
 </body>

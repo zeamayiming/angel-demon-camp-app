@@ -156,36 +156,108 @@ function startSync() {
         // ---------------------------------------------------------
         
         if (config.status === 'ended') {
-            // 🏆 狀態 1：遊戲結束，顯示榮譽榜
             showScreen('end-screen');
             document.getElementById('user-bar').style.display = 'none';
             document.getElementById('main-header').style.display = 'none';
 
-            // 🌟 填入最終分數
-            if(players[myUid]) {
-                document.getElementById('final-score').innerText = players[myUid].total_points || 0;
+            // ======== 🌟 第一步：整理全體玩家資料 (與後台同步) ========
+            const allPlayers = Object.entries(players).map(([uid, p]) => ({
+                uid: uid,
+                name: p.name || '未知玩家',
+                total_points: p.total_points || 0,
+                vAngel: p.verified_angel_tasks || 0,
+                vDemon: p.verified_demon_tasks || 0,
+                fAngel: p.failed_angel_tasks || 0,   
+                fDemon: p.failed_demon_tasks || 0,   
+                tMails: p.total_mails_sent || 0,     
+                gAngel: p.times_guessed_as_angel || 0,
+                gDemon: p.times_guessed_as_demon || 0
+            }));
+
+            // ======== 🌟 第二步：套用後台管理員的「精準計算大腦」 ========
+            // 1. 🏆 MVP：總分最高
+            const mvp = [...allPlayers].sort((a, b) => b.total_points - a.total_points)[0];
+
+            // 2. 👼 最佳小天使：【綜合暖心指數】(成功*25) + (默默付出*10) + (匿名信*5)
+            const validAngels = allPlayers.filter(p => (p.vAngel + p.fAngel + p.tMails) > 0);
+            const bestAngel = validAngels.length > 0 
+                ? validAngels.sort((a, b) => {
+                    let scoreA = (a.vAngel * 25) + (a.fAngel * 10) + (a.tMails * 5);
+                    let scoreB = (b.vAngel * 25) + (b.fAngel * 10) + (b.tMails * 5);
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
+
+            // 3. 😈 最佳小惡魔：【綜合調皮指數】(成功*25) + (默默付出*10)
+            const validDemons = allPlayers.filter(p => (p.vDemon + p.fDemon) > 0);
+            const bestDemon = validDemons.length > 0 
+                ? validDemons.sort((a, b) => {
+                    let scoreA = (a.vDemon * 25) + (a.fDemon * 10);
+                    let scoreB = (b.vDemon * 25) + (b.fDemon * 10);
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
+
+            // 4. 👻 最佳隱形天使：【每日猜猜看重罰公式】(出擊成功 * 10) - (被猜中 * 50)
+            const validInvAngels = allPlayers.filter(p => p.vAngel > 0); 
+            const bestInvAngel = validInvAngels.length > 0 
+                ? validInvAngels.sort((a, b) => {
+                    let scoreA = (a.vAngel * 10) - (a.gAngel * 50); 
+                    let scoreB = (b.vAngel * 10) - (b.gAngel * 50);
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
+
+            // 5. 🥷 最佳隱形惡魔：【每日猜猜看重罰公式】(出擊成功 * 10) - (被猜中 * 50)
+            const validInvDemons = allPlayers.filter(p => p.vDemon > 0); 
+            const bestInvDemon = validInvDemons.length > 0 
+                ? validInvDemons.sort((a, b) => {
+                    let scoreA = (a.vDemon * 10) - (a.gDemon * 50); 
+                    let scoreB = (b.vDemon * 10) - (b.gDemon * 50);
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
+
+            // ======== 🌟 第三步：準備印出前端的 3D 翻牌卡片 ========
+            const currentWinners = [
+                { title: '🏆 營隊 MVP', player: mvp, sub: `總積分: ${mvp ? mvp.total_points : 0} 分`, color: '#f59e0b' },
+                { title: '👼 最佳小天使', player: bestAngel, sub: `暖心指數: ${bestAngel ? (bestAngel.vAngel * 25) + (bestAngel.fAngel * 10) + (bestAngel.tMails * 5) : 0}`, color: '#3b82f6' },
+                { title: '😈 最佳小惡魔', player: bestDemon, sub: `調皮指數: ${bestDemon ? (bestDemon.vDemon * 25) + (bestDemon.fDemon * 10) : 0}`, color: '#ef4444' },
+                { title: '👻 最佳隱形天使', player: bestInvAngel, sub: `隱形指數: ${bestInvAngel ? (bestInvAngel.vAngel * 10) - (bestInvAngel.gAngel * 50) : 0}`, color: '#8b5cf6' },
+                { title: '🥷 最佳隱形惡魔', player: bestInvDemon, sub: `隱形指數: ${bestInvDemon ? (bestInvDemon.vDemon * 10) - (bestInvDemon.gDemon * 50) : 0}`, color: '#10b981' }
+            ];
+
+            let awardHtml = '';
+            currentWinners.forEach(award => {
+                let name = award.player ? award.player.name : '尚無人選';
+                awardHtml += `
+                <div class="swiper-slide">
+                    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front" style="border: 2px solid ${award.color};">
+                                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px; font-weight: bold;">${award.title}</div>
+                                <div style="font-size: 24px; font-weight: bold; color: #334155; margin-bottom: 12px;">???</div>
+                                <div style="font-size: 12px; color: white; background: ${award.color}; padding: 4px 10px; border-radius: 12px; display: inline-block;">點擊揭曉</div>
+                            </div>
+                            <div class="flip-card-back" style="background: ${award.color};">
+                                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">${award.title}</div>
+                                <div style="font-size: 26px; font-weight: bold; margin-bottom: 8px; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">${name}</div>
+                                <div style="font-size: 13px; opacity: 0.9; background: rgba(0,0,0,0.15); padding: 4px 10px; border-radius: 12px; display: inline-block;">${award.sub}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+
+            // 將組裝好的卡片塞入 Swiper 容器的 Wrapper 裡面
+            const swiperWrapper = document.querySelector('.award-swiper .swiper-wrapper');
+            if (swiperWrapper) {
+                swiperWrapper.innerHTML = awardHtml;
             }
 
-            // 🌟 關鍵：將大獎名單填入翻牌卡片 (解決載入中問題)
-            if (config.final_awards) {
-                document.getElementById('award-mvp').innerText = config.final_awards.mvp.name;
-                document.getElementById('award-angel').innerText = config.final_awards.angel.name;
-                document.getElementById('award-demon').innerText = config.final_awards.demon.name;
-                document.getElementById('award-stealth-angel').innerText = config.final_awards.stealthAngel.name;
-                document.getElementById('award-stealth-demon').innerText = config.final_awards.stealthDemon.name;
-            }
-
-            // 顯示誰是我的天使與惡魔
-            let myAngelName = "未指派";
-            let myDemonName = "未指派";
-            for (let id in players) {
-                if (players[id].identity) {
-                    if (players[id].identity.angel_to === myUid) myAngelName = players[id].name;
-                    if (players[id].identity.demon_to === myUid) myDemonName = players[id].name;
-                }
-            }
-            document.getElementById('my-angel-reveal').innerText = myAngelName;
-            document.getElementById('my-demon-reveal').innerText = myDemonName;
+            // 發動引擎！
+            initAwardSwiper();
 
         } else if (config.status === 'daily_settlement') {
             // 🧩 狀態 2：晚間盲測拼圖畫面
@@ -428,7 +500,7 @@ function revealAll() {
         const p = snap.val();
         let res = "【全體小天使與惡魔揭曉報告】\n\n";
         for (let id in p) {
-            res += `👤 ${p[id].name} 的守護者是 ${p[id].identity.angel_to_name} | 惡魔是 ${p[id].identity.demon_to_name}\n`;
+            res += `👤 ${p[id].name} 是 ${p[id].identity.angel_to_name} 的小天使 |  ${p[id].identity.demon_to_name} 的小惡魔\n`;
         }
         console.log(res); alert("報告已生成於 Console，並在此顯示：\n\n" + res);
     });
@@ -551,58 +623,175 @@ function showAdmin() {
 
 // --- 專屬管理員的即時監聽器 (獨立運作，不受畫面切換干擾) ---
 function startAdminMonitor() {
-    // 就像 revealAll 一樣，我們直接且單獨監聽 'players' 節點
-    db.ref('players').on('value', (snap) => {
+// 🌟 升級：監聽整個根目錄
+    db.ref('/').on('value', (snap) => {
         const tbody = document.getElementById('admin-monitor');
         if (!tbody) return; 
         
         tbody.innerHTML = ''; // 清空舊畫面
-        const players = snap.val();
-        
-        if (!players) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">目前無玩家資料</td></tr>';
+        const data = snap.val() || {};
+        const players = data.players || {};
+        const config = data.camp_config || {};
+        const settleCount = config.settle_count || 0;
+
+        if (Object.keys(players).length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">目前無玩家資料</td></tr>';
             return;
         }
 
-        for (let uid in players) {
-            const p = players[uid];
+        // ======== 🌟 第一步：先將玩家資料轉成好用的陣列 ========
+        const allPlayers = Object.entries(players).map(([uid, p]) => ({
+            uid: uid,
+            name: p.name || '未知玩家',
+            total_points: p.total_points || 0,
+            password: p.password || '無',
+            vAngel: p.verified_angel_tasks || 0,
+            vDemon: p.verified_demon_tasks || 0,
+            fAngel: p.failed_angel_tasks || 0,   
+            fDemon: p.failed_demon_tasks || 0,   
+            cGuess: p.correct_guesses || 0,
+            pAngel: p.passive_angel_tasks || 0,
+            pDemon: p.passive_demon_tasks || 0,
+            tMails: p.total_mails_sent || 0,     
+            gAngel: p.times_guessed_as_angel || 0,
+            gDemon: p.times_guessed_as_demon || 0
+        }));
+
+        // ======== 🌟 第二步：為 5 大獎項量身打造「獨立排序邏輯」 ========
+        // 1. 🏆 MVP：總分最高
+        const mvp = [...allPlayers].sort((a, b) => b.total_points - a.total_points)[0];
+        
+        // 2. 👼 最佳小天使：【綜合暖心指數】(成功*25) + (默默付出*10) + (匿名信*5)
+        const validAngels = allPlayers.filter(p => (p.vAngel + p.fAngel + p.tMails) > 0);
+        const bestAngel = validAngels.length > 0 
+            ? validAngels.sort((a, b) => {
+                let scoreA = (a.vAngel * 25) + (a.fAngel * 10) + (a.tMails * 5);
+                let scoreB = (b.vAngel * 25) + (b.fAngel * 10) + (b.tMails * 5);
+                return scoreB - scoreA || b.total_points - a.total_points;
+            })[0]
+            : null;
+        
+        // 3. 😈 最佳小惡魔：【綜合調皮指數】(成功*25) + (默默付出*10)
+        const validDemons = allPlayers.filter(p => (p.vDemon + p.fDemon) > 0);
+        const bestDemon = validDemons.length > 0 
+            ? validDemons.sort((a, b) => {
+                let scoreA = (a.vDemon * 25) + (a.fDemon * 10);
+                let scoreB = (b.vDemon * 25) + (b.fDemon * 10);
+                return scoreB - scoreA || b.total_points - a.total_points;
+            })[0]
+            : null;
+        
+        // 4. 👻 最佳隱形天使：【每日猜猜看重罰公式】(出擊成功 * 10) - (猜猜看被猜中 * 50)
+        // 條件：必須至少成功出擊過一次 (vAngel > 0)
+        const validInvAngels = allPlayers.filter(p => p.vAngel > 0); 
+        const bestInvAngel = validInvAngels.length > 0 
+            ? validInvAngels.sort((a, b) => {
+                let scoreA = (a.vAngel * 10) - (a.gAngel * 50); // 🚨 被猜中一次直接重扣 50 指數！
+                let scoreB = (b.vAngel * 10) - (b.gAngel * 50);
+                return scoreB - scoreA || b.total_points - a.total_points;
+            })[0]
+            : null;
+        
+        // 5. 🥷 最佳隱形惡魔：【每日猜猜看重罰公式】(出擊成功 * 10) - (猜猜看被猜中 * 50)
+        // 條件：必須至少成功出擊過一次 (vDemon > 0)
+        const validInvDemons = allPlayers.filter(p => p.vDemon > 0); 
+        const bestInvDemon = validInvDemons.length > 0 
+            ? validInvDemons.sort((a, b) => {
+                let scoreA = (a.vDemon * 10) - (a.gDemon * 50); // 🚨 被猜中一次直接重扣 50 指數！
+                let scoreB = (b.vDemon * 10) - (b.gDemon * 50);
+                return scoreB - scoreA || b.total_points - a.total_points;
+            })[0]
+            : null;
+
+        // ======== 🌟 第三步：更新預測面板 ========
+        const currentWinners = [
+            { title: '🏆 營隊 MVP', player: mvp, sub: `${mvp ? mvp.total_points : 0} 分` },
+            // 🌟 顯示暖心指數與詳細貢獻
+            { 
+                title: '👼 最佳小天使', 
+                player: bestAngel, 
+                sub: bestAngel ? `暖心指數: ${(bestAngel.vAngel * 25) + (bestAngel.fAngel * 10) + (bestAngel.tMails * 5)} (成功${bestAngel.vAngel}/默默${bestAngel.fAngel}/信${bestAngel.tMails})` : '尚無人選' 
+            },
+            
+            // 🌟 顯示調皮指數與詳細貢獻
+            { 
+                title: '😈 最佳小惡魔', 
+                player: bestDemon, 
+                sub: bestDemon ? `調皮指數: ${(bestDemon.vDemon * 25) + (bestDemon.fDemon * 10)} (成功${bestDemon.vDemon}/默默${bestDemon.fDemon})` : '尚無人選' 
+            },
+            // 🌟 明確顯示「每日猜猜看」的被猜中次數
+            { 
+                title: '👻 最佳隱形天使', 
+                player: bestInvAngel, 
+                sub: bestInvAngel ? `指數: ${(bestInvAngel.vAngel * 10) - (bestInvAngel.gAngel * 50)} (出擊${bestInvAngel.vAngel}/被猜中${bestInvAngel.gAngel})` : '尚無人選' 
+            },
+            { 
+                title: '🥷 最佳隱形惡魔', 
+                player: bestInvDemon, 
+                sub: bestInvDemon ? `指數: ${(bestInvDemon.vDemon * 10) - (bestInvDemon.gDemon * 50)} (出擊${bestInvDemon.vDemon}/被猜中${bestInvDemon.gDemon})` : '尚無人選' 
+            }
+        ];
+
+        let awardHtml = '';
+        currentWinners.forEach(award => {
+            let name = award.player ? award.player.name : '尚無人選';
+            awardHtml += `
+                <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; flex: 1 1 calc(33% - 10px); min-width: 140px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div style="font-weight: bold; color: #475569; margin-bottom: 4px; font-size: 12px;">${award.title}</div>
+                    <div style="color: #6366f1; font-size: 15px;"><b>${name}</b> <span style="color:#94a3b8; font-size:12px;">(${award.sub})</span></div>
+                </div>
+            `;
+        });
+
+        const winnerBoard = document.getElementById('admin-winner-board');
+        if (winnerBoard) {
+            const awardList = winnerBoard.querySelector('#award-list');
+            if (awardList) {
+                awardList.innerHTML = awardHtml;
+            } else {
+                 winnerBoard.innerHTML = awardHtml;
+            }
+        }
+
+        // ======== 🌟 第四步：畫出管理員的監控大表格 ========
+        const dayIndicator = document.getElementById('admin-day-indicator');
+        if (dayIndicator) {
+            dayIndicator.innerHTML = `📅 <b>活動進度：第 ${settleCount + 1} 天</b> (目前已成功執行 ${settleCount} 次積分結算)`;
+        }
+
+        // 表格依照總分排序
+        allPlayers.sort((a, b) => b.total_points - a.total_points);
+
+        allPlayers.forEach((p, index) => {
             const tr = document.createElement('tr');
+            let medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
             
-            // 抓取基本資料 (玩家與積分)
-            const playerName = p.name || '未知玩家';
-            const playerPoints = p.total_points || 0;
-            const playerPass = p.password || '無';
+            // ... (這裡保留你原本組合 breakdownHTML 和 tr.innerHTML 的程式碼) ...
+            let breakdownHTML = `
+                <div style="font-size: 11px; text-align: left; color: #475569; line-height: 1.4; padding: 2px 0;">
+                    <span style="color:#10b981; font-weight:bold;">✅ 出擊成功(天/惡)(+25): ${p.vAngel} / ${p.vDemon} 次</span><br>
+                    <span style="color:#0ea5e9; font-weight:bold;">🎯 盲測接收(天/惡)(+25): ${p.pAngel} / ${p.pDemon} 次</span><br>
+                    <span style="color:#ef4444;">❌ 默默付出(天/惡)(+10): ${p.fAngel} / ${p.fDemon} 次</span><br>
+                    <span style="color:#f59e0b; font-weight:bold;">💡 猜中身分(+20): ${p.cGuess} 次</span><br>
+                    <span style="color:#8b5cf6;">📨 匿名信(+2): ${p.tMails} 封</span><br>
+                    <span style="color:#64748b;">🥷 完美潛伏(天/惡)(+15): ${settleCount - p.gAngel } / ${settleCount - p.gDemon} 次</span>
+                </div>
+            `;
 
-            // 抓取最後一筆任務證明
-            // const lastTask = p.tasks ? Object.values(p.tasks).pop() : null;
-            // let proofContent = '<span style="color:#94a3b8">尚未提交</span>';
-            
-            // if (lastTask) {
-            //     const proofStr = lastTask.proof ? String(lastTask.proof) : "無內容";
-            //     const titleStr = lastTask.task_title ? String(lastTask.task_title) : "任務";
-            //     const isImg = proofStr.match(/\.(jpeg|jpg|gif|png)$/) != null || proofStr.startsWith('http');
-                
-            //     proofContent = isImg 
-            //         ? `<div class="proof-box">
-            //              <b>${titleStr}</b><br>
-            //              <img src="${proofStr}" style="width:120px; margin-top:5px; border-radius:4px;"><br>
-            //              <small style="word-break:break-all; color:blue;">${proofStr}</small>
-            //            </div>`
-            //         : `<div class="proof-box"><b>${titleStr}</b><br>${proofStr}</div>`;
-            // }
-
-            // 畫出表格
             tr.innerHTML = `
-                <td>${playerName}</td>
-                <td style="font-weight:bold; color:var(--primary)">${playerPoints}</td>
-                <td>${playerPass}</td>
+                <td style="font-weight: bold;">${medal}${p.name}</td>
+                <td style="font-weight:bold; color: #059669; font-size: 15px;">${p.total_points} 分</td>
+                <td style="color:#475569; font-family: monospace; font-weight: bold;">${p.password}</td>
+                <td style="background: #fafafa; padding: 6px; border-left: 3px solid #6366f1;">${breakdownHTML}</td>
                 <td>
-                    <button onclick="adjustScore('${uid}', -10)" style="background:#ef4444; color:white; padding:4px; font-size:10px; width:auto;">扣10分</button>
+                    <button onclick="adjustScore('${p.uid}', -10)" style="background:#ef4444; color:white; padding:4px; font-size:10px; width:auto; margin:0;">扣10分</button>
                 </td>
-                <td><button onclick="deletePlayer('${uid}')" style="background:#ef4444; color:white; border:none; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:12px;">刪除</button></td>
+                <td>
+                    <button onclick="deletePlayer('${p.uid}')" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px;">刪除</button>
+                </td>
             `;
             tbody.appendChild(tr);
-        }
+        });
     });
 }
 // --- 盲測拼圖核心邏輯 ---
@@ -611,69 +800,206 @@ function startAdminMonitor() {
 // --- 管理員：步驟 1. 載入任務並進行審核 ---
 // ==========================================
 function loadTasksForAdmin() {
-    db.ref('daily_events').once('value', snap => {
-        const events = snap.val();
+    db.ref('/').once('value', snap => {
+        const data = snap.val() || {};
+        const events = data.daily_events;
+        const players = data.players || {}; 
+        
         const reviewBox = document.getElementById('admin-task-review');
         const listDiv = document.getElementById('review-list');
         
-        reviewBox.style.display = 'block';
+        if (reviewBox) reviewBox.style.display = 'block';
+        if (!listDiv) return;
+        
         listDiv.innerHTML = '';
 
         if (!events) {
-            listDiv.innerHTML = '<span style="color:#ef4444;">今日尚無任何任務提交。</span>';
+            listDiv.innerHTML = '<div style="text-align:center; color:#ef4444; padding: 10px;">今日尚無任何任務提交。</div>';
             return;
         }
 
-        // 抓出所有任務並去重複
-        const uniqueTasks = [...new Set(Object.values(events).map(e => e.task))];
-        
-        uniqueTasks.forEach(taskStr => {
-            // 預設全勾選，管理員可以把不妥的選項取消勾選
-            listDiv.innerHTML += `
-                <label style="display:block; margin-bottom:5px; cursor:pointer;">
-                    <input type="checkbox" value="${taskStr}" class="admin-task-cb" checked> 
-                    ${taskStr}
-                </label>`;
-        });
+        // 建立精美的任務審核卡片
+        for (let eventId in events) {
+            const ev = events[eventId];
+            if (!ev || !ev.task) continue; // 防呆
+            
+            const actorName = players[ev.actor] ? players[ev.actor].name : '未知';
+            const targetName = players[ev.target] ? players[ev.target].name : '未知';
+            const typeLabel = ev.type === 'angel' ? '👼 天使' : '😈 惡魔';
+            const taskStr = ev.task || '';
+
+            // 卡片外框
+            const card = document.createElement('div');
+            card.style.cssText = "margin-bottom: 15px; padding: 6px; background: #ffffff; border: 2px solid #e2e8f0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 5px;";
+
+            // --- 第一排：勾選框 + 原始任務資訊 ---
+            const topRow = document.createElement('div');
+            topRow.style.cssText = "display: flex; align-items: flex-start; gap: 10px;";
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'task-publish-repo';
+            cb.dataset.eventId = eventId;
+            cb.checked = true;
+            cb.style.cssText = "width: 20%; cursor: pointer; transform: scale(1.3); margin-top: 4px;";
+
+            const infoSpan = document.createElement('span');
+            infoSpan.style.cssText = "width: 10px,font-size: 13px; color: #475569; line-height: 1.5;";
+            infoSpan.innerHTML = `<strong>${typeLabel}</strong> <span style="color:#3b82f6;">${actorName}</span> ➔ <span style="color:#ef4444;">${targetName}</span><br>🔍 原始行為：<b style="color:#0f172a; font-size: 14px;">${taskStr}</b>`;
+
+            topRow.appendChild(cb);
+            topRow.appendChild(infoSpan);
+
+            // --- 第二排：明確的編輯輸入區 ---
+            const bottomRow = document.createElement('div');
+            // bottomRow.style.cssText = "display: flex; align-items: center; gap: 8px; margin-left: 25px; margin-top: 5px;";
+            bottomRow.style.cssText = "display: flex; align-items: flex-start; gap: 8px; margin-left: 25px; margin-top: 5px;";
+
+            const editIcon = document.createElement('span');
+            editIcon.innerText = "✏️ 統一改為:";
+            editIcon.style.cssText = "font-size: 13px; font-weight: bold; color: #10b981; white-space: nowrap;";
+
+            const input = document.createElement('textarea');
+            // input.type = 'text';
+            input.className = 'task-edit-input';
+            input.dataset.eventId = eventId;
+            input.value = taskStr; // 預設先幫你填入原始文字，方便你直接小修改
+            input.placeholder = "請輸入統一後的任務名稱...";
+            // 加強輸入框樣式，確保絕對可以點擊編輯
+            input.style.cssText = "flex: 1; padding: 8px 12px; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 14px; color: #0f172a; background: #f8fafc; outline: none; cursor: text; pointer-events: auto;";
+            
+            // 點擊時的高光特效 (提升操作手感)
+            input.onfocus = () => { input.style.border = "2px solid #3b82f6"; input.style.background = "#ffffff"; };
+            input.onblur = () => { input.style.border = "2px solid #cbd5e1"; input.style.background = "#f8fafc"; };
+            
+            // 🌟 新增：專屬的「確定」儲存按鈕
+            const saveBtn = document.createElement('button');
+            saveBtn.innerText = "確定";
+            // 獨立按鈕樣式，寬度隨內容撐開，與輸入框頂部保持微調間距
+            saveBtn.style.cssText = "background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; width: auto; margin: 0; margin-top: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
+
+            // 🌟 點擊「確定」事件：直接即時寫入 Firebase 資料庫
+            saveBtn.onclick = () => {
+                const newText = input.value.trim();
+                if (!newText) {
+                    alert("❌ 錯誤：任務名稱不能為空！");
+                    return;
+                }
+                
+                // 悄悄去雲端更新這一條日常任務的名稱
+                db.ref(`daily_events/${eventId}`).update({ task: newText }).then(() => {
+                    // 特效：讓框框閃爍一下綠色高光，提示儲存成功，免去煩人的 alert 彈窗影響操作速度
+                    input.style.border = "2px solid #10b981";
+                    saveBtn.innerText = "✓ 已存";
+                    saveBtn.style.background = "#059669";
+                    
+                    setTimeout(() => {
+                        input.style.border = "2px solid #cbd5e1";
+                        saveBtn.innerText = "確定";
+                        saveBtn.style.background = "#10b981";
+                    }, 1200);
+                }).catch(err => {
+                    alert("❌ 儲存失敗，請檢查網路：" + err.message);
+                });
+            };
+            bottomRow.appendChild(editIcon);
+            bottomRow.appendChild(input);
+            bottomRow.appendChild(saveBtn);
+
+            card.appendChild(topRow);
+            card.appendChild(bottomRow);
+            listDiv.appendChild(card);
+        }
     });
 }
 
 // 管理員手動加入煙霧彈 (假任務)
 function addFakeTask() {
-    const val = document.getElementById('fake-task-input').value.trim();
-    if (val) {
-        document.getElementById('review-list').insertAdjacentHTML('afterbegin', `
-            <label style="display:block; margin-bottom:5px; cursor:pointer; color:#be123c;">
-                <input type="checkbox" value="${val}" class="admin-task-cb" checked> 
-                ${val} <small>(手動加入)</small>
-            </label>`);
-        document.getElementById('fake-task-input').value = ''; // 清空輸入框
+    const input = document.getElementById('fake-task-input');
+    const taskText = input.value.trim();
+    if (!taskText) {
+        alert('請先輸入假任務內容！');
+        return;
     }
+
+    const li = document.createElement('div'); // 改成 div 比較好排版
+    li.style.marginBottom = '8px';
+    li.style.color = '#8b5cf6';
+
+    li.innerHTML = `
+        <label style="cursor: pointer;">
+            <input type="checkbox" class="task-checkbox" value="${taskText}" checked> 
+            <b>[煙霧彈]</b> ${taskText}
+        </label>
+    `;
+    
+    // 🌟 關鍵修改：直接把假任務插在輸入框的父元素前面！
+    input.parentElement.parentNode.insertBefore(li, input.parentElement);
+    
+    input.value = ''; // 清空輸入框
 }
 
 // ==========================================
 // --- 管理員：步驟 2. 發布任務並觸發盲測 ---
 // ==========================================
 function publishAndStartSettlement() {
-    const checkboxes = document.querySelectorAll('.admin-task-cb:checked');
-    const approvedTasks = Array.from(checkboxes).map(cb => cb.value);
+    if (!confirm("📢 確定要發布這些勾選的任務，並強制全體玩家進入盲測作答嗎？")) return;
 
-    if (approvedTasks.length === 0 && !confirm("您沒有勾選任何任務，確定要發布空白表單嗎？")) {
-        return;
-    }
+    const checkboxes = document.querySelectorAll('.task-publish-repo');
+    let checkedTasksSet = new Set(); 
+    let updates = {};
 
-    if (confirm("即將發布這些任務給全體玩家，並強制跳轉至盲測畫面！確定嗎？")) {
-        let updates = {};
-        // 將核准的任務存入一個新的節點 approved_tasks
-        updates['camp_config/approved_tasks'] = approvedTasks;
-        // 切換遊戲狀態，觸發所有玩家畫面跳轉
-        updates['camp_config/status'] = 'daily_settlement';
+    checkboxes.forEach(checkbox => {
+        const eventId = checkbox.dataset.eventId;
+        const inputEl = document.querySelector(`.task-edit-input[data-event-id="${eventId}"]`);
+        
+        if (!inputEl) return;
+        const finalTaskName = inputEl.value.trim(); 
+        
+        if (!finalTaskName) return; 
+
+        if (checkbox.checked) {
+            checkedTasksSet.add(finalTaskName);
+            // 將玩家原始任務覆蓋為管理員編輯後的統一名稱
+            updates[`daily_events/${eventId}/task`] = finalTaskName;
+        } else {
+            // 取消勾選則視為捨棄該任務
+            updates[`daily_events/${eventId}`] = null;
+        }
+    });
+
+    // ======== 🌟 關鍵補丁：從畫面上抓取我們剛才產生的「假任務(煙霧彈)」 ========
+    const fakeCheckboxes = document.querySelectorAll('.task-checkbox:checked');
+    fakeCheckboxes.forEach(cb => {
+        if (cb.value) {
+            checkedTasksSet.add(cb.value.trim()); // 把假任務也塞進去重名單中
+        }
+    });
+    // ======================================================================
+
+    // 處理資料庫中可能殘留的假任務 (保留你原本的邏輯防呆)
+    db.ref('fake_tasks').once('value', fakeSnap => {
+        if (fakeSnap.exists()) {
+            Object.values(fakeSnap.val()).forEach(fakeTask => {
+                if (fakeTask) checkedTasksSet.add(fakeTask.trim()); 
+            });
+        }
+
+        const finalChecklistOptions = Array.from(checkedTasksSet);
+
+        if (finalChecklistOptions.length === 0) {
+            alert("❌ 錯誤：發布清單是空的！請至少勾選一個玩家任務或加入一個假任務。");
+            return;
+        }
+
+        updates['camp_config/daily_checklist'] = finalChecklistOptions; 
+        updates['camp_config/status'] = 'daily_settlement';            
+        updates['fake_tasks'] = null;                                  
 
         db.ref().update(updates).then(() => {
-            alert("✅ 任務已發布！全體玩家已進入盲測作答畫面。");
-            document.getElementById('admin-task-review').style.display = 'none'; // 收起審核區
+            alert(`✅ 發布成功！系統已將任務去重合併為 [ ${finalChecklistOptions.length} ] 個選項，玩家畫面已切換至結算！`);
         });
-    }
+    });
 }
 
 // ==========================================
@@ -681,56 +1007,54 @@ function publishAndStartSettlement() {
 // ==========================================
 // (這個函數會被 startSync 在進入 daily_settlement 狀態時自動呼叫)
 function loadDailyChecklist() {
-    // 玩家不再讀取 daily_events，而是讀取管理員篩選過的 approved_tasks
-    db.ref('camp_config/approved_tasks').once('value', snap => {
-        const approvedTasks = snap.val() || [];
+    db.ref('camp_config/daily_checklist').once('value', snap => {
+        const list = snap.val() || [];
         const container = document.getElementById('checklist-container');
-        container.innerHTML = '';
         
-        if (approvedTasks.length === 0) {
-            container.innerHTML = '今天大家都很乖，沒有任何事件發生。';
+        if (!container) return; // 防呆
+        container.innerHTML = ''; // 清空舊畫面
+
+        if (list.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 20px;">今日無拼圖選項。</div>';
             return;
         }
 
-        // 隨機打亂任務順序，不讓玩家看出端倪
-        approvedTasks.sort(() => Math.random() - 0.5);
+        // 🌟 使用最安全的 createElement 來畫出每一個選項
+        list.forEach((taskStr) => {
+            if (!taskStr) return;
 
-        approvedTasks.forEach(taskStr => {
+            // 建立外層的點擊標籤 (Label)
             const label = document.createElement('label');
-            label.style = "display:block; margin-bottom:8px; cursor:pointer;";
-            label.innerHTML = `<input type="checkbox" value="${taskStr}" style="width:auto; margin-right:10px;"> ${taskStr}`;
+            label.style.cssText = "display: block; margin-bottom: 10px; padding: 12px 15px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 15px; color: #1e293b; transition: all 0.2s ease;";
+            
+            // 建立勾選方塊 (Checkbox)
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'daily-task-cb'; // ⚠️ 重要：保留這個 class 讓送出功能可以抓到
+            cb.value = taskStr; // 透過屬性安全賦值，100% 免疫引號與特殊符號破壞
+            cb.style.cssText = "margin-right: 12px; transform: scale(1.3); cursor: pointer;";
+
+            // ✨ 加入 UI 特效：點擊時外框變色，讓玩家知道自己勾了什麼
+            cb.onchange = function() {
+                if (this.checked) {
+                    label.style.background = "#eff6ff";
+                    label.style.border = "2px solid #3b82f6";
+                } else {
+                    label.style.background = "#f8fafc";
+                    label.style.border = "2px solid #e2e8f0";
+                }
+            };
+
+            // 建立純文字節點 (確保任何奇怪的字元都會被當成純文字顯示)
+            const textNode = document.createTextNode(taskStr);
+
+            // 組裝選項並放進畫面
+            label.appendChild(cb);
+            label.appendChild(textNode);
             container.appendChild(label);
         });
     });
 }
-
-// // 載入當日所有出現過的任務清單
-// function loadDailyChecklist() {
-//     db.ref('daily_events').once('value', snap => {
-//         const events = snap.val();
-//         const container = document.getElementById('checklist-container');
-//         container.innerHTML = '';
-        
-//         if (!events) {
-//             container.innerHTML = '今天大家都很乖，沒有任何事件發生。';
-//             return;
-//         }
-
-//         // 抓取所有任務名稱，並使用 Set 進行「字串精準去重複」
-//         const uniqueTasks = [...new Set(Object.values(events).map(e => e.task))];
-        
-//         // 隨機打亂任務順序，避免被猜出先後關聯
-//         uniqueTasks.sort(() => Math.random() - 0.5);
-
-//         uniqueTasks.forEach(taskStr => {
-//             const label = document.createElement('label');
-//             label.style = "display:block; margin-bottom:8px; cursor:pointer;";
-//             label.innerHTML = `<input type="checkbox" value="${taskStr}" style="width:auto; margin-right:10px;"> ${taskStr}`;
-//             container.appendChild(label);
-//         });
-//     });
-// }
-
 // 玩家送出自己的拼圖勾選
 // 玩家送出自己的拼圖勾選
 function submitChecklist() {
@@ -751,13 +1075,13 @@ function calculateAndApplyScores() {
     if(!confirm("確定大家都在盲測畫面上交卷了嗎？即將計算拼圖與心理戰分數！")) return;
 
     db.ref('/').once('value', snap => {
-        const data = snap.val();
+        const data = snap.val() || {};
         const events = data.daily_events || {};
         const players = data.players || {};
+        // 抓出原本的累積結算次數 (防呆預設為 0)
+        const currentSettleCount = (data.camp_config && data.camp_config.settle_count) ? data.camp_config.settle_count : 0;
         
         let updates = {};
-        
-        // --- 準備工作：建立反向字典與初始化更新快取 ---
         let trueAngels = {}; 
         let trueDemons = {}; 
 
@@ -766,13 +1090,14 @@ function calculateAndApplyScores() {
                 trueAngels[players[uid].identity.angel_to] = uid;
                 trueDemons[players[uid].identity.demon_to] = uid;
             }
-            // 預先把大家目前的分數載入 updates 暫存區
             updates[`players/${uid}/total_points`] = players[uid].total_points || 0;
         }
 
         // --- 1. 結算盲測拼圖 (日常任務) ---
         for (let eventId in events) {
             const ev = events[eventId];
+            if (!ev || !ev.actor || !ev.target || !ev.task) continue; 
+            
             const actorId = ev.actor;
             const targetId = ev.target;
             const taskName = ev.task;
@@ -781,93 +1106,96 @@ function calculateAndApplyScores() {
             const isMatch = targetChecked.includes(taskName);
             
             if (isMatch) {
-                updates[`players/${actorId}/total_points`] += 25; // 雙向奔赴
+                // 成功：雙向奔赴
+                updates[`players/${actorId}/total_points`] += 25; 
                 updates[`players/${targetId}/total_points`] += 25;
                 
-                // 👇 這裡新增：紀錄成功被目標認證的任務次數 (用於結算最佳天使與惡魔)
-                // 注意：ev.type 會是 'angel' 或 'demon'，所以會自動存成 verified_angel_tasks 或 verified_demon_tasks
-                let currentTaskCount = players[actorId][`verified_${ev.type}_tasks`] || 0;
+                let currentTaskCount = updates[`players/${actorId}/verified_${ev.type}_tasks`] !== undefined ? updates[`players/${actorId}/verified_${ev.type}_tasks`] : (players[actorId][`verified_${ev.type}_tasks`] || 0);
                 updates[`players/${actorId}/verified_${ev.type}_tasks`] = currentTaskCount + 1;
-
+            
+                // 🌟 2. 新增：紀錄「接收者(目標)」的盲測接收成功次數
+                let currentPassiveCount = updates[`players/${targetId}/passive_${ev.type}_tasks`] !== undefined ? updates[`players/${targetId}/passive_${ev.type}_tasks`] : (players[targetId][`passive_${ev.type}_tasks`] || 0);
+                updates[`players/${targetId}/passive_${ev.type}_tasks`] = currentPassiveCount + 1;
             } else {
-                updates[`players/${actorId}/total_points`] += 10; // 默默付出
+                // 失敗：默默付出
+                updates[`players/${actorId}/total_points`] += 10; 
+                
+                // 🌟 新增：玩家發送卻沒有配對成功 (天使/惡魔任務失敗統計)
+                let currentFailedCount = updates[`players/${actorId}/failed_${ev.type}_tasks`] !== undefined ? updates[`players/${actorId}/failed_${ev.type}_tasks`] : (players[actorId][`failed_${ev.type}_tasks`] || 0);
+                updates[`players/${actorId}/failed_${ev.type}_tasks`] = currentFailedCount + 1;
             }
         }
         
-        // --- 2. 結算終極對決 (神探獎 與 煙霧彈大師) ---
-        // ---------------------------------------------------------
-        // 2. 結算「今日猜猜看」分數
-        // ---------------------------------------------------------
+        // --- 2. 結算今日猜猜看與信箱 ---
         for (let uid in players) {
-            // 抓取剛剛算完盲測後的最新分數
             let currentPts = updates[`players/${uid}/total_points`] !== undefined ? updates[`players/${uid}/total_points`] : (players[uid].total_points || 0);
 
-            // 如果這個人今天有提交猜測... (保留原本猜猜看的邏輯)
             if (players[uid].final_guess && players[uid].has_guessed_today) {
                 let guessA = players[uid].final_guess.a;
                 let guessD = players[uid].final_guess.d;
-                if (guessA === trueAngels[uid]) currentPts += 20;
-                if (guessD === trueDemons[uid]) currentPts += 20;
+                if (guessA === trueAngels[uid]) {
+                    currentPts += 20;
+                    let cGuess = updates[`players/${uid}/correct_guesses`] !== undefined ? updates[`players/${uid}/correct_guesses`] : (players[uid].correct_guesses || 0);
+                    updates[`players/${uid}/correct_guesses`] = cGuess + 1;
+                }
+                if (guessD === trueDemons[uid]){
+                    currentPts += 20;
+                    let cGuess = updates[`players/${uid}/correct_guesses`] !== undefined ? updates[`players/${uid}/correct_guesses`] : (players[uid].correct_guesses || 0);
+                    updates[`players/${uid}/correct_guesses`] = cGuess + 1;
+                }
             }
 
-            // 🌟 新增：結算匿名信箱分數 (每封2分，每日上限10分)
             let mailsSent = players[uid].daily_mails_sent || 0;
             if (mailsSent > 0) {
-                let mailBonus = Math.min(mailsSent * 2, 10); // 取發信分數或上限 10 分較小者
+                let mailBonus = Math.min(mailsSent * 2, 10); 
                 currentPts += mailBonus;
+                
+                // 🌟 新增：累積全營隊期間該玩家發出的「匿名信總量」
+                let totalMails = players[uid].total_mails_sent || 0;
+                updates[`players/${uid}/total_mails_sent`] = totalMails + mailsSent;
             }
 
-            // 把加總後的分數寫回 updates
             updates[`players/${uid}/total_points`] = currentPts;
-
-            // ---------------------------------------------------------
-            // 3. 清空今日紀錄，準備迎接明天
-            // ---------------------------------------------------------
             updates[`players/${uid}/daily_checked`] = null;
             updates[`players/${uid}/has_guessed_today`] = null;
-            updates[`players/${uid}/daily_mails_sent`] = null; // 🌟 清空今日發信數量
+            updates[`players/${uid}/daily_mails_sent`] = null; 
         }
 
-        // --- 3. 結算完美潛伏 (沒被主人猜中) ---
+        // --- 3. 結算完美潛伏 ---
         for (let uid in players) {
             if (players[uid].identity) {
                 let myAngelTarget = players[uid].identity.angel_to;
                 let myDemonTarget = players[uid].identity.demon_to;
 
-                // 抓取「我的目標們」今天的猜測結果
                 let angelTargetGuess = (players[myAngelTarget] && players[myAngelTarget].final_guess && players[myAngelTarget].has_guessed_today) ? players[myAngelTarget].final_guess.a : null;
-
                 let demonTargetGuess = (players[myDemonTarget] && players[myDemonTarget].final_guess && players[myDemonTarget].has_guessed_today) ? players[myDemonTarget].final_guess.d : null;
 
-                // 🥷 完美潛伏：我守護的人，沒有猜中我是他的天使 (給一半 15 分)
                 if (angelTargetGuess !== uid) {
                     updates[`players/${uid}/total_points`] += 15;
                 } else {
-                    // 👇 這裡新增：糟糕！被守護的對象猜中了，增加被猜中次數 (用於結算最佳隱形天使)
                     let currentGuessedAsAngel = players[uid].times_guessed_as_angel || 0;
                     updates[`players/${uid}/times_guessed_as_angel`] = currentGuessedAsAngel + 1;
                 }
 
-                // 🥷 完美潛伏：我捉弄的人，沒有猜中我是他的惡魔 (給另一半 15 分，全瞞過就是 +30)
                 if (demonTargetGuess !== uid) {
                     updates[`players/${uid}/total_points`] += 15;
                 } else {
-                    // 👇 這裡新增：糟糕！被陷害的對象猜中了，增加被猜中次數 (用於結算最佳隱形惡魔)
                     let currentGuessedAsDemon = players[uid].times_guessed_as_demon || 0;
                     updates[`players/${uid}/times_guessed_as_demon`] = currentGuessedAsDemon + 1;
                 }
             }
 
-            // --- 4. 清空今日紀錄，迎接明天 ---
             updates[`players/${uid}/daily_checked`] = null;
             updates[`players/${uid}/has_guessed_today`] = null;
-            updates[`players/${uid}/daily_mail_points`] = null; // 🔓 重新開放明天的 10 分信箱額度
+            updates[`players/${uid}/daily_mail_points`] = null; 
             updates[`players/${uid}/has_submitted_checklist`] = null;
         }
         
-        // 清空事件，並把遊戲切回 active 讓大家看到新分數
         updates['daily_events'] = null;
         updates['camp_config/status'] = 'active'; 
+        
+        // 🌟 新增：結算成功時，將資料庫的天使惡魔天數計數器加 1
+        updates['camp_config/settle_count'] = currentSettleCount + 1;
         
         db.ref().update(updates).then(() => {
             alert("✅ 結算完成！分數已發放，匿名信箱額度與猜測機制已重置，玩家已返回遊戲畫面。");
@@ -898,7 +1226,7 @@ function sendToAdmin() {
     const isAnonymous = document.querySelector('input[name="admin-msg-type"]:checked').value === 'anonymous';
 
     if (!content) {
-        alert("⚠️ 請輸入想對上帝說的話！");
+        alert("⚠️ 請輸入想管理員說的話！");
         return;
     }
 
@@ -913,7 +1241,7 @@ function sendToAdmin() {
         content: content,
         timestamp: firebase.database.ServerValue.TIMESTAMP
     }).then(() => {
-        alert("✅ 訊息已成功發送給上帝！");
+        alert("✅ 訊息已成功發送給管理員！");
         document.getElementById('admin-msg-content').value = ""; // 清空輸入框
     }).catch((error) => {
         console.error("發送失敗:", error);
@@ -923,7 +1251,7 @@ function sendToAdmin() {
 
 // 📨 管理員接收訊息即時監聽
 function listenToAdminMessages() {
-    console.log("系統：上帝收件匣監聽已啟動...");
+    console.log("系統：管理員收件匣監聽已啟動...");
     
     db.ref('admin_messages').orderByChild('timestamp').on('value', (snap) => {
         const msgListContainer = document.getElementById('admin-msg-list');
@@ -967,7 +1295,7 @@ function listenToAdminMessages() {
 
 // 🗑️ 清空所有上帝訊息
 function clearAdminMessages() {
-    if (confirm("🚨 確定要清空「上帝收件匣」的所有訊息嗎？此動作無法復原。")) {
+    if (confirm("🚨 確定要清空「管理員收件匣」的所有訊息嗎？此動作無法復原。")) {
         db.ref('admin_messages').remove()
             .then(() => alert("✅ 已清空所有訊息"))
             .catch(err => alert("❌ 清空失敗: " + err));
@@ -1048,7 +1376,43 @@ function listenToLeaderboard() {
                 `;
             });
         }
-
-        listContainer.innerHTML = html;
+        if(listContainer){
+            listContainer.innerHTML = html;
+        }
+        
+        initAwardSwiper();
     });
+}
+
+// ==========================================
+// 獨立的 Swiper 啟動器 (防呆防撞版)
+// ==========================================
+// ==========================================
+// 獨立的 Swiper 啟動器 (防當機版)
+// ==========================================
+function initAwardSwiper() {
+    setTimeout(() => {
+        try {
+            // 如果已經有舊的輪播，先清掉避免打架
+            if (window.mySwiper) {
+                window.mySwiper.destroy(true, true);
+            }
+            window.mySwiper = new Swiper('.award-swiper', {
+                loop: true,
+                centeredSlides: true,
+                slidesPerView: 1.4,
+                spaceBetween: 15,
+                autoplay: {
+                    delay: 1000,
+                    disableOnInteraction: true,
+                },
+                speed: 600,
+                observer: true,       // 監測畫面顯示
+                observeParents: true, // 監測父元素
+            });
+            console.log("✅ 輪播卡片啟動成功！");
+        } catch (error) {
+            console.error("🚨 輪播載入失敗，但不影響遊戲：", error);
+        }
+    }, 500);
 }
