@@ -160,6 +160,17 @@ function startSync() {
             document.getElementById('user-bar').style.display = 'none';
             document.getElementById('main-header').style.display = 'none';
 
+            // ======== 🌟 補回被誤殺的：玩家個人的最終成績 ========
+            const myData = players[myUid];
+            if (myData) {
+                // 💡 提醒：這裡的 getElementById 請確認是否跟你 HTML 裡的 ID 一致
+                // 如果你的 ID 不同 (例如叫 final-angel)，請直接修改單引號裡面的名稱！
+                
+                let myScoreEl = document.getElementById('final-score');
+                if (myScoreEl) myScoreEl.innerText = myData.total_points || 0;
+            }
+            // ===================================================
+
             // ======== 🌟 第一步：整理全體玩家資料 (與後台同步) ========
             const allPlayers = Object.entries(players).map(([uid, p]) => ({
                 uid: uid,
@@ -175,45 +186,84 @@ function startSync() {
             }));
 
             // ======== 🌟 第二步：套用後台管理員的「精準計算大腦」 ========
-            // 1. 🏆 MVP：總分最高
-            const mvp = [...allPlayers].sort((a, b) => b.total_points - a.total_points)[0];
+            // 1. 🏆 營隊 MVP：【雙棲特務門檻】必須天/惡任務都至少成功過 1 次，才有資格比總分！
+            const validMvps = allPlayers.filter(p => p.vAngel > 0 && p.vDemon > 0);
 
-            // 2. 👼 最佳小天使：【綜合暖心指數】(成功*25) + (默默付出*10) + (匿名信*5)
+            // 如果有人達標，就從達標的人裡面挑總分最高的；如果全營隊都超雷沒人達標，才退回比全體總分
+            const mvp = validMvps.length > 0 
+                ? validMvps.sort((a, b) => b.total_points - a.total_points)[0]
+                : [...allPlayers].sort((a, b) => b.total_points - a.total_points)[0];
+
+            // 2. 👼 最佳小天使：【開根號防刷分 + 命中率加權模型】
             const validAngels = allPlayers.filter(p => (p.vAngel + p.fAngel + p.tMails) > 0);
             const bestAngel = validAngels.length > 0 
                 ? validAngels.sort((a, b) => {
-                    let scoreA = (a.vAngel * 25) + (a.fAngel * 10) + (a.tMails * 5);
-                    let scoreB = (b.vAngel * 25) + (b.fAngel * 10) + (b.tMails * 5);
+                    // 基礎分：任務苦勞 + 信件開根號
+                    let baseA = (a.vAngel * 25) + (a.fAngel * 10) + (Math.sqrt(a.tMails) * 20);
+                    let baseB = (b.vAngel * 25) + (b.fAngel * 10) + (Math.sqrt(b.tMails) * 20);
+                    
+                    // 命中率乘數 (0.5 ~ 1.0)
+                    let totalTasksA = a.vAngel + a.fAngel;
+                    let multA = totalTasksA > 0 ? 0.5 + 0.5 * (a.vAngel / totalTasksA) : 1;
+                    
+                    let totalTasksB = b.vAngel + b.fAngel;
+                    let multB = totalTasksB > 0 ? 0.5 + 0.5 * (b.vAngel / totalTasksB) : 1;
+                    
+                    let scoreA = baseA * multA;
+                    let scoreB = baseB * multB;
+                    
                     return scoreB - scoreA || b.total_points - a.total_points;
                 })[0]
                 : null;
 
-            // 3. 😈 最佳小惡魔：【綜合調皮指數】(成功*25) + (默默付出*10)
+            // 3. 😈 最佳小惡魔：【命中率加權模型】(惡魔不看信件，只看整人成功率)
             const validDemons = allPlayers.filter(p => (p.vDemon + p.fDemon) > 0);
             const bestDemon = validDemons.length > 0 
                 ? validDemons.sort((a, b) => {
-                    let scoreA = (a.vDemon * 25) + (a.fDemon * 10);
-                    let scoreB = (b.vDemon * 25) + (b.fDemon * 10);
+                    let baseA = (a.vDemon * 25) + (a.fDemon * 10);
+                    let baseB = (b.vDemon * 25) + (b.fDemon * 10);
+                    
+                    let totalTasksA = a.vDemon + a.fDemon;
+                    let multA = totalTasksA > 0 ? 0.5 + 0.5 * (a.vDemon / totalTasksA) : 1;
+                    
+                    let totalTasksB = b.vDemon + b.fDemon;
+                    let multB = totalTasksB > 0 ? 0.5 + 0.5 * (b.vDemon / totalTasksB) : 1;
+                    
+                    let scoreA = baseA * multA;
+                    let scoreB = baseB * multB;
+                    
                     return scoreB - scoreA || b.total_points - a.total_points;
                 })[0]
                 : null;
 
-            // 4. 👻 最佳隱形天使：【每日猜猜看重罰公式】(出擊成功 * 10) - (被猜中 * 50)
-            const validInvAngels = allPlayers.filter(p => p.vAngel > 0); 
-            const bestInvAngel = validInvAngels.length > 0 
+                // 4. 👻 最佳隱形天使：【指數衰減模型】(活躍度) × (0.6 的被抓次方)
+                const validInvAngels = allPlayers.filter(p => p.vAngel > 0); 
+                const bestInvAngel = validInvAngels.length > 0 
                 ? validInvAngels.sort((a, b) => {
-                    let scoreA = (a.vAngel * 10) - (a.gAngel * 50); 
-                    let scoreB = (b.vAngel * 10) - (b.gAngel * 50);
+                    // 你的專屬活躍度公式 (出擊25 + 默默15 + 寫信5)
+                    let baseA = (a.vAngel * 25) + (a.fAngel * 15) + (a.tMails * 5);
+                    let baseB = (b.vAngel * 25) + (b.fAngel * 15) + (b.tMails * 5);
+                    
+                    // 指數衰減：Math.pow(0.6, 次數) 
+                    let scoreA = baseA * Math.pow(0.6, a.gAngel);
+                    let scoreB = baseB * Math.pow(0.6, b.gAngel);
+                    
                     return scoreB - scoreA || b.total_points - a.total_points;
                 })[0]
                 : null;
 
-            // 5. 🥷 最佳隱形惡魔：【每日猜猜看重罰公式】(出擊成功 * 10) - (被猜中 * 50)
-            const validInvDemons = allPlayers.filter(p => p.vDemon > 0); 
-            const bestInvDemon = validInvDemons.length > 0 
+                // 5. 🥷 最佳隱形惡魔：【指數衰減模型】(活躍度) × (0.6 的被抓次方)
+                const validInvDemons = allPlayers.filter(p => p.vDemon > 0); 
+                const bestInvDemon = validInvDemons.length > 0 
                 ? validInvDemons.sort((a, b) => {
-                    let scoreA = (a.vDemon * 10) - (a.gDemon * 50); 
-                    let scoreB = (b.vDemon * 10) - (b.gDemon * 50);
+                    // 惡魔活躍度 (出擊25 + 默默15)
+                    let baseA = (a.vDemon * 25) + (a.fDemon * 15);
+                    let baseB = (b.vDemon * 25) + (b.fDemon * 15);
+                    
+                    // 指數衰減
+                    let scoreA = baseA * Math.pow(0.6, a.gDemon);
+                    let scoreB = baseB * Math.pow(0.6, b.gDemon);
+                    
                     return scoreB - scoreA || b.total_points - a.total_points;
                 })[0]
                 : null;
@@ -221,10 +271,33 @@ function startSync() {
             // ======== 🌟 第三步：準備印出前端的 3D 翻牌卡片 ========
             const currentWinners = [
                 { title: '🏆 營隊 MVP', player: mvp, sub: `總積分: ${mvp ? mvp.total_points : 0} 分`, color: '#f59e0b' },
-                { title: '👼 最佳小天使', player: bestAngel, sub: `暖心指數: ${bestAngel ? (bestAngel.vAngel * 25) + (bestAngel.fAngel * 10) + (bestAngel.tMails * 5) : 0}`, color: '#3b82f6' },
-                { title: '😈 最佳小惡魔', player: bestDemon, sub: `調皮指數: ${bestDemon ? (bestDemon.vDemon * 25) + (bestDemon.fDemon * 10) : 0}`, color: '#ef4444' },
-                { title: '👻 最佳隱形天使', player: bestInvAngel, sub: `隱形指數: ${bestInvAngel ? (bestInvAngel.vAngel * 10) - (bestInvAngel.gAngel * 50) : 0}`, color: '#8b5cf6' },
-                { title: '🥷 最佳隱形惡魔', player: bestInvDemon, sub: `隱形指數: ${bestInvDemon ? (bestInvDemon.vDemon * 10) - (bestInvDemon.gDemon * 50) : 0}`, color: '#10b981' }
+                // 👼 小天使字卡
+                { 
+                    title: '👼 最佳小天使', 
+                    player: bestAngel, 
+                    sub: bestAngel ? `綜合評分: ${Math.round(((bestAngel.vAngel * 25) + (bestAngel.fAngel * 10) + (Math.sqrt(bestAngel.tMails) * 20)) * (bestAngel.vAngel + bestAngel.fAngel > 0 ? 0.5 + 0.5 * (bestAngel.vAngel / (bestAngel.vAngel + bestAngel.fAngel)) : 1))} (成功率${Math.round((bestAngel.vAngel / (bestAngel.vAngel + bestAngel.fAngel || 1)) * 100)}%)` : '尚無人選', 
+                    color: '#3b82f6' 
+                },
+                // 😈 小惡魔字卡
+                { 
+                    title: '😈 最佳小惡魔', 
+                    player: bestDemon, 
+                    sub: bestDemon ? `綜合評分: ${Math.round(((bestDemon.vDemon * 25) + (bestDemon.fDemon * 10)) * (bestDemon.vDemon + bestDemon.fDemon > 0 ? 0.5 + 0.5 * (bestDemon.vDemon / (bestDemon.vDemon + bestDemon.fDemon)) : 1))} (成功率${Math.round((bestDemon.vDemon / (bestDemon.vDemon + bestDemon.fDemon || 1)) * 100)}%)` : '尚無人選', 
+                    color: '#ef4444' 
+                },
+                { 
+                    title: '👻 最佳隱形天使', 
+                    player: bestInvAngel, 
+                    // 把小數點四捨五入到整數 Math.round()
+                    sub: bestInvAngel ? `潛行評分: ${Math.round(((bestInvAngel.vAngel * 25) + (bestInvAngel.fAngel * 15) + (bestInvAngel.tMails * 5)) * Math.pow(0.6, bestInvAngel.gAngel))} (被猜中${bestInvAngel.gAngel}次)` : '尚無人選', 
+                    color: '#8b5cf6' 
+                },
+                { 
+                    title: '🥷 最佳隱形惡魔', 
+                    player: bestInvDemon, 
+                    sub: bestInvDemon ? `潛行評分: ${Math.round(((bestInvDemon.vDemon * 25) + (bestInvDemon.fDemon * 15)) * Math.pow(0.6, bestInvDemon.gDemon))} (被猜中${bestInvDemon.gDemon}次)` : '尚無人選', 
+                    color: '#10b981' 
+                }
             ];
 
             let awardHtml = '';
@@ -255,6 +328,18 @@ function startSync() {
             if (swiperWrapper) {
                 swiperWrapper.innerHTML = awardHtml;
             }
+
+                        // 顯示誰是我的天使與惡魔
+            let myAngelName = "未指派";
+            let myDemonName = "未指派";
+            for (let id in players) {
+                if (players[id].identity) {
+                    if (players[id].identity.angel_to === myUid) myAngelName = players[id].name;
+                    if (players[id].identity.demon_to === myUid) myDemonName = players[id].name;
+                }
+            }
+            document.getElementById('my-angel-reveal').innerText = myAngelName;
+            document.getElementById('my-demon-reveal').innerText = myDemonName;
 
             // 發動引擎！
             initAwardSwiper();
@@ -658,78 +743,120 @@ function startAdminMonitor() {
         }));
 
         // ======== 🌟 第二步：為 5 大獎項量身打造「獨立排序邏輯」 ========
-        // 1. 🏆 MVP：總分最高
-        const mvp = [...allPlayers].sort((a, b) => b.total_points - a.total_points)[0];
+        // 1. 🏆 營隊 MVP：【雙棲特務門檻】必須天/惡任務都至少成功過 1 次，才有資格比總分！
+            const validMvps = allPlayers.filter(p => p.vAngel > 0 && p.vDemon > 0);
+
+            // 如果有人達標，就從達標的人裡面挑總分最高的；如果全營隊都超雷沒人達標，才退回比全體總分
+            const mvp = validMvps.length > 0 
+                ? validMvps.sort((a, b) => b.total_points - a.total_points)[0]
+                : [...allPlayers].sort((a, b) => b.total_points - a.total_points)[0];
         
-        // 2. 👼 最佳小天使：【綜合暖心指數】(成功*25) + (默默付出*10) + (匿名信*5)
-        const validAngels = allPlayers.filter(p => (p.vAngel + p.fAngel + p.tMails) > 0);
-        const bestAngel = validAngels.length > 0 
-            ? validAngels.sort((a, b) => {
-                let scoreA = (a.vAngel * 25) + (a.fAngel * 10) + (a.tMails * 5);
-                let scoreB = (b.vAngel * 25) + (b.fAngel * 10) + (b.tMails * 5);
-                return scoreB - scoreA || b.total_points - a.total_points;
-            })[0]
-            : null;
+        // 2. 👼 最佳小天使：【開根號防刷分 + 命中率加權模型】
+            const validAngels = allPlayers.filter(p => (p.vAngel + p.fAngel + p.tMails) > 0);
+            const bestAngel = validAngels.length > 0 
+                ? validAngels.sort((a, b) => {
+                    // 基礎分：任務苦勞 + 信件開根號
+                    let baseA = (a.vAngel * 25) + (a.fAngel * 10) + (Math.sqrt(a.tMails) * 20);
+                    let baseB = (b.vAngel * 25) + (b.fAngel * 10) + (Math.sqrt(b.tMails) * 20);
+                    
+                    // 命中率乘數 (0.5 ~ 1.0)
+                    let totalTasksA = a.vAngel + a.fAngel;
+                    let multA = totalTasksA > 0 ? 0.5 + 0.5 * (a.vAngel / totalTasksA) : 1;
+                    
+                    let totalTasksB = b.vAngel + b.fAngel;
+                    let multB = totalTasksB > 0 ? 0.5 + 0.5 * (b.vAngel / totalTasksB) : 1;
+                    
+                    let scoreA = baseA * multA;
+                    let scoreB = baseB * multB;
+                    
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
+
+            // 3. 😈 最佳小惡魔：【命中率加權模型】(惡魔不看信件，只看整人成功率)
+            const validDemons = allPlayers.filter(p => (p.vDemon + p.fDemon) > 0);
+            const bestDemon = validDemons.length > 0 
+                ? validDemons.sort((a, b) => {
+                    let baseA = (a.vDemon * 25) + (a.fDemon * 10);
+                    let baseB = (b.vDemon * 25) + (b.fDemon * 10);
+                    
+                    let totalTasksA = a.vDemon + a.fDemon;
+                    let multA = totalTasksA > 0 ? 0.5 + 0.5 * (a.vDemon / totalTasksA) : 1;
+                    
+                    let totalTasksB = b.vDemon + b.fDemon;
+                    let multB = totalTasksB > 0 ? 0.5 + 0.5 * (b.vDemon / totalTasksB) : 1;
+                    
+                    let scoreA = baseA * multA;
+                    let scoreB = baseB * multB;
+                    
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
         
-        // 3. 😈 最佳小惡魔：【綜合調皮指數】(成功*25) + (默默付出*10)
-        const validDemons = allPlayers.filter(p => (p.vDemon + p.fDemon) > 0);
-        const bestDemon = validDemons.length > 0 
-            ? validDemons.sort((a, b) => {
-                let scoreA = (a.vDemon * 25) + (a.fDemon * 10);
-                let scoreB = (b.vDemon * 25) + (b.fDemon * 10);
-                return scoreB - scoreA || b.total_points - a.total_points;
-            })[0]
-            : null;
-        
-        // 4. 👻 最佳隱形天使：【每日猜猜看重罰公式】(出擊成功 * 10) - (猜猜看被猜中 * 50)
-        // 條件：必須至少成功出擊過一次 (vAngel > 0)
-        const validInvAngels = allPlayers.filter(p => p.vAngel > 0); 
-        const bestInvAngel = validInvAngels.length > 0 
-            ? validInvAngels.sort((a, b) => {
-                let scoreA = (a.vAngel * 10) - (a.gAngel * 50); // 🚨 被猜中一次直接重扣 50 指數！
-                let scoreB = (b.vAngel * 10) - (b.gAngel * 50);
-                return scoreB - scoreA || b.total_points - a.total_points;
-            })[0]
-            : null;
-        
-        // 5. 🥷 最佳隱形惡魔：【每日猜猜看重罰公式】(出擊成功 * 10) - (猜猜看被猜中 * 50)
-        // 條件：必須至少成功出擊過一次 (vDemon > 0)
-        const validInvDemons = allPlayers.filter(p => p.vDemon > 0); 
-        const bestInvDemon = validInvDemons.length > 0 
-            ? validInvDemons.sort((a, b) => {
-                let scoreA = (a.vDemon * 10) - (a.gDemon * 50); // 🚨 被猜中一次直接重扣 50 指數！
-                let scoreB = (b.vDemon * 10) - (b.gDemon * 50);
-                return scoreB - scoreA || b.total_points - a.total_points;
-            })[0]
-            : null;
+            // 4. 👻 最佳隱形天使：【指數衰減模型】(活躍度) × (0.6 的被抓次方)
+            const validInvAngels = allPlayers.filter(p => p.vAngel > 0); 
+            const bestInvAngel = validInvAngels.length > 0 
+                ? validInvAngels.sort((a, b) => {
+                    // 你的專屬活躍度公式 (出擊25 + 默默15 + 寫信5)
+                    let baseA = (a.vAngel * 25) + (a.fAngel * 15) + (a.tMails * 5);
+                    let baseB = (b.vAngel * 25) + (b.fAngel * 15) + (b.tMails * 5);
+                    
+                    // 指數衰減：Math.pow(0.6, 次數) 
+                    let scoreA = baseA * Math.pow(0.6, a.gAngel);
+                    let scoreB = baseB * Math.pow(0.6, b.gAngel);
+                    
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
+
+            // 5. 🥷 最佳隱形惡魔：【指數衰減模型】(活躍度) × (0.6 的被抓次方)
+            const validInvDemons = allPlayers.filter(p => p.vDemon > 0); 
+            const bestInvDemon = validInvDemons.length > 0 
+                ? validInvDemons.sort((a, b) => {
+                    // 惡魔活躍度 (出擊25 + 默默15)
+                    let baseA = (a.vDemon * 25) + (a.fDemon * 15);
+                    let baseB = (b.vDemon * 25) + (b.fDemon * 15);
+                    
+                    // 指數衰減
+                    let scoreA = baseA * Math.pow(0.6, a.gDemon);
+                    let scoreB = baseB * Math.pow(0.6, b.gDemon);
+                    
+                    return scoreB - scoreA || b.total_points - a.total_points;
+                })[0]
+                : null;
 
         // ======== 🌟 第三步：更新預測面板 ========
         const currentWinners = [
             { title: '🏆 營隊 MVP', player: mvp, sub: `${mvp ? mvp.total_points : 0} 分` },
             // 🌟 顯示暖心指數與詳細貢獻
-            { 
-                title: '👼 最佳小天使', 
-                player: bestAngel, 
-                sub: bestAngel ? `暖心指數: ${(bestAngel.vAngel * 25) + (bestAngel.fAngel * 10) + (bestAngel.tMails * 5)} (成功${bestAngel.vAngel}/默默${bestAngel.fAngel}/信${bestAngel.tMails})` : '尚無人選' 
-            },
-            
-            // 🌟 顯示調皮指數與詳細貢獻
-            { 
-                title: '😈 最佳小惡魔', 
-                player: bestDemon, 
-                sub: bestDemon ? `調皮指數: ${(bestDemon.vDemon * 25) + (bestDemon.fDemon * 10)} (成功${bestDemon.vDemon}/默默${bestDemon.fDemon})` : '尚無人選' 
-            },
+            // 👼 小天使字卡
+                { 
+                    title: '👼 最佳小天使', 
+                    player: bestAngel, 
+                    sub: bestAngel ? `綜合評分: ${Math.round(((bestAngel.vAngel * 25) + (bestAngel.fAngel * 10) + (Math.sqrt(bestAngel.tMails) * 20)) * (bestAngel.vAngel + bestAngel.fAngel > 0 ? 0.5 + 0.5 * (bestAngel.vAngel / (bestAngel.vAngel + bestAngel.fAngel)) : 1))} (成功率${Math.round((bestAngel.vAngel / (bestAngel.vAngel + bestAngel.fAngel || 1)) * 100)}%)` : '尚無人選', 
+                    color: '#3b82f6' 
+                },
+                // 😈 小惡魔字卡
+                { 
+                    title: '😈 最佳小惡魔', 
+                    player: bestDemon, 
+                    sub: bestDemon ? `綜合評分: ${Math.round(((bestDemon.vDemon * 25) + (bestDemon.fDemon * 10)) * (bestDemon.vDemon + bestDemon.fDemon > 0 ? 0.5 + 0.5 * (bestDemon.vDemon / (bestDemon.vDemon + bestDemon.fDemon)) : 1))} (成功率${Math.round((bestDemon.vDemon / (bestDemon.vDemon + bestDemon.fDemon || 1)) * 100)}%)` : '尚無人選', 
+                    color: '#ef4444' 
+                },
             // 🌟 明確顯示「每日猜猜看」的被猜中次數
             { 
-                title: '👻 最佳隱形天使', 
-                player: bestInvAngel, 
-                sub: bestInvAngel ? `指數: ${(bestInvAngel.vAngel * 10) - (bestInvAngel.gAngel * 50)} (出擊${bestInvAngel.vAngel}/被猜中${bestInvAngel.gAngel})` : '尚無人選' 
-            },
-            { 
-                title: '🥷 最佳隱形惡魔', 
-                player: bestInvDemon, 
-                sub: bestInvDemon ? `指數: ${(bestInvDemon.vDemon * 10) - (bestInvDemon.gDemon * 50)} (出擊${bestInvDemon.vDemon}/被猜中${bestInvDemon.gDemon})` : '尚無人選' 
-            }
+                    title: '👻 最佳隱形天使', 
+                    player: bestInvAngel, 
+                    // 把小數點四捨五入到整數 Math.round()
+                    sub: bestInvAngel ? `潛行評分: ${Math.round(((bestInvAngel.vAngel * 25) + (bestInvAngel.fAngel * 15) + (bestInvAngel.tMails * 5)) * Math.pow(0.6, bestInvAngel.gAngel))} (被猜中${bestInvAngel.gAngel}次)` : '尚無人選', 
+                    color: '#8b5cf6' 
+                },
+                { 
+                    title: '🥷 最佳隱形惡魔', 
+                    player: bestInvDemon, 
+                    sub: bestInvDemon ? `潛行評分: ${Math.round(((bestInvDemon.vDemon * 25) + (bestInvDemon.fDemon * 15)) * Math.pow(0.6, bestInvDemon.gDemon))} (被猜中${bestInvDemon.gDemon}次)` : '尚無人選', 
+                    color: '#10b981' 
+                }
         ];
 
         let awardHtml = '';
