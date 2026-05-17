@@ -87,12 +87,12 @@ header {
     padding: 15px; 
     border-radius: 12px; 
     margin-bottom: 15px; 
-    color: white; 
+    color: rgb(253, 246, 246); 
     box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
 }
 
 .angel-card { 
-    background: linear-gradient(135deg, #60a5fa, #3b82f6); 
+    background: linear-gradient(135deg, #8afbd2, #00fecff4); 
 }
 
 .demon-card { 
@@ -266,4 +266,32 @@ button {
     transform: rotateY(180deg);
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
     color: white;
+}
+
+/* ==========================================
+   🕵️‍♂️ 隱藏對象：防偷看長按按鈕
+   ========================================== */
+#angel-target-display, #demon-target-display {
+    display: inline-block;
+    background: #e2e8f0;         /* 低調的灰色背景 */
+    color: #64748b;              /* 低調的灰色文字 */
+    padding: 4px 12px;
+    border-radius: 16px;         /* 圓角藥丸形狀 */
+    font-size: 14px;
+    cursor: pointer;
+    
+    /* 🛡️ 核心防護：禁止使用者反白選取文字，防止長按跳出系統選單 */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    
+    transition: all 0.2s ease;
+}
+
+/* 按住時的「顯形」狀態 */
+#angel-target-display.revealed, #demon-target-display.revealed {
+    background: #fef08a;         /* 顯眼的高亮黃色 */
+    color: #b45309;              /* 深橘色文字 */
+    font-weight: bold;
+    box-shadow: 0 0 8px rgba(250, 204, 21, 0.5); /* 發光特效 */
 }

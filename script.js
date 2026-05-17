@@ -370,10 +370,38 @@ function startSync() {
             // 🎮 狀態 3：遊戲進行中 (顯示任務牆、信箱、猜猜看)
             showScreen('game-screen');
             document.getElementById('main-header').style.display = 'block';
-            document.getElementById('angel-target-display').innerText = players[myUid].identity.angel_to_name || "無";
-            document.getElementById('demon-target-display').innerText = players[myUid].identity.demon_to_name || "無";
+            // document.getElementById('angel-target-display').innerText = players[myUid].identity.angel_to_name || "無";
+            // document.getElementById('demon-target-display').innerText = players[myUid].identity.demon_to_name || "無";
+            // 🕵️‍♂️ 防偷看機制：把名字藏在 dataset 裡，畫面顯示預設文字
+            const angelEl = document.getElementById('angel-target-display');
+            const demonEl = document.getElementById('demon-target-display');
+            
+            if (angelEl && demonEl) {
+                angelEl.dataset.name = players[myUid].identity.angel_to_name || "無";
+                angelEl.innerText = "🤫 按住查看";
+                
+                demonEl.dataset.name = players[myUid].identity.demon_to_name || "無";
+                demonEl.innerText = "🤫 按住查看";
+            }
+            
             updateSelects(players);
             
+
+            // 🌟 確保這段程式碼有放在 startSync() 裡面，當遊戲啟動時執行
+            const receiverSelect = document.getElementById('mail-receiver-select');
+            if (receiverSelect) {
+                receiverSelect.innerHTML = '<option value="">-- 請選擇寄信對象 --</option>';
+                Object.keys(players).forEach(uid => {
+                    // 排除自己，這樣寄信的對象就只會是「其他玩家」
+                    if (uid !== myUid) {
+                        const option = document.createElement('option');
+                        option.value = uid;
+                        option.textContent = players[uid].name;
+                        receiverSelect.appendChild(option);
+                    }
+                });
+            }
+
             // 更新個人積分與排行榜
             const ptsDisplay = document.getElementById('my-current-points');
             if(ptsDisplay) ptsDisplay.innerText = players[myUid].total_points || 0;
@@ -417,7 +445,7 @@ function startSync() {
         }
     });
 
-    // 匿名信箱即時監聽 (保持不變)
+    // 匿名信箱即時監聽 (支援動態顯示匿名/實名)
     db.ref('messages').on('value', (snap) => {
         const list = document.getElementById('mailbox-list');
         if(!list) return;
@@ -426,9 +454,22 @@ function startSync() {
             Object.values(snap.val()).reverse().forEach(m => {
                 if (m.to === myUid) {
                     const div = document.createElement('div');
-                    div.style = "background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--primary);";
-                    div.innerHTML = `${m.content}<br><small style="color:#94a3b8">來自：匿名 • ${m.time}</small>`;
-                    list.appendChild(div);
+                    
+                    const displaySender = m.senderName || '匿名'; 
+                    if(displaySender == '匿名'){
+                        div.style = "background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--primary);";
+                        div.innerHTML = `${m.content}<br><small style="color:#876B8A">👻來自：${displaySender} • ${m.time}</small>`;
+                        list.appendChild(div);
+                    }
+                    else{ 
+                        div.style = "background:#F9F1F9   ; padding:10px; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--primary);";
+                        div.innerHTML = `${m.content}<br><small style="color:#876B8A">🙂來自：${displaySender} • ${m.time}</small>`;
+                        list.appendChild(div);
+                    }
+                        // 🌟 核心修改：如果信件有 senderName 就用它，沒有的話（相容舊信件）就顯示 '匿名'
+
+
+                    // 把原本寫死的 '來自：匿名' 換成 ${displaySender}
                 }
             });
         }
@@ -510,23 +551,30 @@ function submitBlindTask(type) {
 function sendMail() {
     const to = document.getElementById('mail-to').value;
     const content = document.getElementById('mail-msg').value.trim();
+    
+    // 🌟 抓取目前選單是選擇匿名還是實名
+    const anonymousSelect = document.getElementById('mail-anonymous-select');
+    const isAnonymous = anonymousSelect ? anonymousSelect.value === 'true' : true; // 防呆預設匿名
+
     if (!to || !content) return alert("請選擇收件人並填寫內容");
     
-    // 1. 將信件推送到資料庫
+    // 1. 將信件推送到資料庫 (新增 senderName 欄位)
     db.ref('messages').push({ 
         to: to, 
         content: content, 
-        time: new Date().toLocaleTimeString() 
+        time: new Date().toLocaleTimeString(),
+        // 🌟 核心：匿名就填"匿名"，實名就填"你的名字"
+        senderName: isAnonymous ? "匿名" : myName
     });
     
-    // 2. 🌟 關鍵點：這裡「只」紀錄今天發了幾封信，絕對不能出現 total_points！
+    // 2. 紀錄今天發了幾封信 (維持你原本的邏輯)
     db.ref(`players/${myUid}/daily_mails_sent`).transaction(count => {
         return (count || 0) + 1;
     });
     
     // 3. 清空輸入框並提示玩家
     document.getElementById('mail-msg').value = '';
-    alert("匿名信已送出！積分將於今晚結算時統一發放。");
+    alert("信件已送出！積分將於今晚結算時統一發放。");
 }
 
 function submitGuess() {
@@ -1475,7 +1523,7 @@ function listenToLeaderboard() {
         const top5 = playerArr.slice(0, 5);
 
         // 4. 定義匿名代號與獎牌
-        const anonymousNames = ["🤫 神秘卷王", "👻 潛伏大師", "🥷 隱形殺手", "🕵️ 未知高手", "🎭 幕後黑手"];
+        const anonymousNames = ["🤫 超強卷王", "👻 潛伏大師", "🥷 隱形殺手", "🕵️ 未知高手", "🎭 幕後黑手"];
         const medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"];
 
         // 5. 生成 HTML 畫面
@@ -1543,3 +1591,44 @@ function initAwardSwiper() {
         }
     }, 500);
 }
+
+// ==========================================
+// 🕵️‍♂️ 防偷看：長按顯形機制 (指紋解鎖模式)
+// ==========================================
+function setupSecretTargets() {
+    const targets = ['angel-target-display', 'demon-target-display'];
+    
+    targets.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        // 🟢 動作：手指按住 -> 顯示真實姓名
+        const showName = (e) => {
+            e.preventDefault(); // 阻擋手機預設的長按選單
+            if (el.dataset.name) {
+                el.innerText = el.dataset.name;
+                el.classList.add('revealed');
+            }
+        };
+
+        // 🔴 動作：手指放開 -> 變回隱藏狀態
+        const hideName = (e) => {
+            e.preventDefault();
+            el.innerText = "🤫 按住查看";
+            el.classList.remove('revealed');
+        };
+
+        // 📱 綁定手機觸控事件
+        el.addEventListener('touchstart', showName, {passive: false});
+        el.addEventListener('touchend', hideName);
+        el.addEventListener('touchcancel', hideName);
+
+        // 🖱️ 綁定電腦滑鼠事件 (讓你用電腦測試時也能按)
+        el.addEventListener('mousedown', showName);
+        el.addEventListener('mouseup', hideName);
+        el.addEventListener('mouseleave', hideName); // 移開範圍也馬上隱藏
+    });
+}
+
+// 確保網頁載入後，自動啟動這些感應器
+document.addEventListener('DOMContentLoaded', setupSecretTargets);

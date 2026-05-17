@@ -1,9 +1,36 @@
+<!-- 
+                       _oo0oo_
+                      o8888888o
+                      88" . "88
+                      (| -_- |)
+                      0\  =  /0
+                    ___/`---'\___
+                  .' \\|     |// '.
+                 / \\|||  :  |||// \
+                / _||||| -:- |||||- \
+               |   | \\\  -  /// |   |
+               | \_|  ''\---/''  |_/ |
+               \  .-\__  '-'  ___/-. /
+             ___'. .'  /--.--\  `. .'___
+          ."" '<  `.___\_<|>_/___.' >' "".
+         | | :  `- \`.;`\ _ /`;.`/ - ` : | |
+         \  \ `_.   \_ __\ /__ _/   .-` /  /
+     =====`-.____`.___ \_____/___.-`___.-'=====
+                       `=---='
+
+
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+               佛祖保佑         永無BUG
+ -->
+
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小天使 | 小惡魔 v1.4.1</title>
+    <title>小天使 | 小惡魔 v1.4.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -77,8 +104,8 @@
 
             <!-- <div id="tab-quests" class="tab-content active"> -->
             <div id="tab-quests" class="tab-content active">
-                <div class="card angel-card">
-                    <small> 👼 你是 <b id="angel-target-display" style="font-size:18px;">?</b> 的小天使：</small>
+                <div class="card angel-card" style="color:#354947;">
+                    <small> 😇 你是 <b id="angel-target-display" style="font-size:18px;">?</b> 的小天使：</small>
                     <div class="task-selector">
                         <label>選擇要執行的天使任務：</label>
                         <select id="select-task-angel" onchange="checkCustom('angel')">
@@ -151,16 +178,26 @@
                 </div>
             </div>
 
+<div id="tab-mail" class="tab-content" style="display:none;">
+    <h3>📬 敲敲話傳聲筒</h3>
+    
+    <select id="mail-to"></select>
+    
+    <div style="margin: 10px 0;">
+        <label for="mail-anonymous-select" style="font-size: 13px; color: #475569;">發送身分：</label>
+        <select id="mail-anonymous-select" style="padding: 4px; border-radius: 4px; border: 1px solid #cbd5e1;">
+            <option value="true">🤫 保持匿名 (對方不會知道你是誰)</option>
+            <option value="false">📢 實名發送 (對方會知道你是誰)</option>
+        </select>
+    </div>
 
+    <textarea id="mail-msg" placeholder="輸入訊息..."></textarea>
+    <button class="btn-primary" onclick="sendMail()">發送心願信</button>
+    
+    <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+    <div id="mailbox-list"></div>
+</div>
 
-            <div id="tab-mail" class="tab-content" style="display:none;">
-                <h3>📬 匿名傳聲筒</h3>
-                <select id="mail-to"></select>
-                <textarea id="mail-msg" placeholder="輸入匿名訊息..."></textarea>
-                <button class="btn-primary" onclick="sendMail()">發送匿名信</button>
-                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-                <div id="mailbox-list"></div>
-            </div>
 
             <div id="tab-guess" class="tab-content" style="display:none;">
                 <h3>今日猜猜看</h3>
@@ -190,12 +227,12 @@
             <div id="end-screen" class="screen">
                 <div style="text-align:center; padding: 20px 0;">
                     <h2 style="color: var(--primary);">🎉 遊戲結束！真相大白 🎉</h2>
-                    <div style="background:#f1f5f9; padding:20px; border-radius:15px; margin-bottom:20px;">
+                    <div style="background:#fbf7ff; padding:20px; border-radius:15px; margin-bottom:20px;">
                         <h3>你的最終總積分</h3>
                         <span id="final-score" style="font-size:48px; color:#ef4444; font-weight:bold;">0</span>
                     </div>
                     
-                    <div class="card angel-card" style="margin-bottom: 15px;">
+                    <div class="card angel-card" style="margin-bottom: 15px; color:#354947;">
                         <h3 style="margin:0 0 10px 0;">😇 默默守護你的小天使是：</h3>
                         <div id="my-angel-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
                     </div>
