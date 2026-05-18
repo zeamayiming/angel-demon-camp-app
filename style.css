@@ -761,6 +761,21 @@ button:active,
     margin-top: 5px;
 }
 
+/* #admin-panel, */
+#superuser-screen {
+
+    width: 100%;
+    max-width: 1400px;
+
+    margin: auto;
+
+    padding: 20px;
+
+    min-height: 100vh;
+
+    background: #f8fafc;
+}
+
 @media (max-width: 480px) {
     body {
         background: var(--surface);
