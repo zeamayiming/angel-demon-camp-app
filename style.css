@@ -1,76 +1,128 @@
 :root { 
-    --primary: #6366f1; 
-    --angel: #3b82f6; 
-    --demon: #ef4444; 
-    --bg: #f8fafc; 
+    --primary: #6d5dfc;
+    --primary-dark: #4f46e5;
+    --accent: #f5b84b;
+    --angel: #14b8a6;
+    --demon: #f43f5e;
+    --bg: #edf1fb;
+    --surface: #ffffff;
+    --panel: #f7f8fc;
+    --line: #dbe3f0;
+    --text: #243044;
+    --muted: #6b778c;
+    --shadow: 0 8px 24px rgba(36, 48, 68, 0.12);
+    --soft-shadow: 0 3px 10px rgba(36, 48, 68, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    background: var(--bg);
 }
 
 body { 
     font-family: sans-serif; 
-    background: var(--bg); 
+    background: linear-gradient(180deg, #e8edfb 0%, #f8fafc 100%);
+    color: var(--text);
     margin: 0; 
     padding: 0; 
+    -webkit-text-size-adjust: 100%;
 }
 
 .container { 
     width: 100%; 
-    max-width: 600px; 
+    max-width: 430px; 
     margin: auto; 
-    background: white; 
-    min-height: 100vh; 
+    background: var(--surface); 
+    min-height: 100dvh; 
     display: flex; 
     flex-direction: column; 
-    box-shadow: 0 0 20px rgba(0,0,0,0.1); 
+    box-shadow: var(--shadow); 
 }
 
 /* 置頂玩家資訊 */
 .user-bar { 
-    background: #1e293b; 
+    background: #243044; 
     color: white; 
-    padding: 12px 20px; 
-    font-size: 14px; 
+    padding: 9px 14px; 
+    font-size: 12px; 
     display: none; 
     justify-content: space-between; 
     align-items: center; 
-    position: sticky; 
+    position: fixed; 
     top: 0; 
-    z-index: 1000; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    z-index: 1001; 
+    box-shadow: 0 4px 14px rgba(36, 48, 68, 0.18);
 }
 
-/* Header 導覽 */
-header { 
-    background: white; 
-    border-bottom: 1px solid #e2e8f0; 
+/* Header 導覽：手機以底部遊戲 tab bar 呈現 */
+#main-header { 
+    background: rgba(255,255,255,0.96); 
+    border-top: 1px solid var(--line); 
+    border-bottom: 0;
     display: none; 
-    position: sticky; 
-    top: 43px; 
-    z-index: 999; 
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
+    z-index: 1000; 
+    box-shadow: 0 -8px 22px rgba(36, 48, 68, 0.12);
+    backdrop-filter: blur(14px);
 }
 
-.nav-tabs { 
+.nav-tabs {
     display: flex; 
     list-style: none; 
     padding: 0; 
     margin: 0; 
-    justify-content: space-around; 
+    justify-content: space-between;
+    gap: 3px;
 }
 
 .nav-tabs li { 
-    padding: 15px 5px; 
+    flex: 1;
+    min-width: 0;
+    padding: 6px 1px; 
     cursor: pointer; 
     font-weight: bold; 
-    color: #64748b; 
-    border-bottom: 3px solid transparent; 
-    font-size: 14px; 
+    color: var(--muted); 
+    border-bottom: 0; 
+    border-radius: 8px;
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .nav-tabs li.active { 
-    color: var(--primary); 
-    border-bottom-color: var(--primary); 
+    color: white; 
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    box-shadow: 0 4px 12px rgba(109, 93, 252, 0.28);
+    transform: translateY(-1px);
+}
+
+.nav-icon {
+    display: block;
+    font-size: 15px;
+    line-height: 1;
 }
 
 .content { 
-    padding: 20px; 
+    padding: 50px 12px calc(78px + env(safe-area-inset-bottom)); 
     flex: 1; 
 }
 
@@ -80,23 +132,68 @@ header {
 
 .screen.active { 
     display: block; 
+    animation: gamePop 0.28s ease both;
+}
+
+.game-status-strip {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 0 2px;
+}
+
+.score-card {
+    flex: 1;
+    background: linear-gradient(135deg, #ffffff, #f7f8fc);
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--soft-shadow);
+    text-align: center;
+    animation: gamePop 0.28s ease both;
+}
+
+.score-card small {
+    color: var(--muted);
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.score-card #my-current-points {
+    font-size: 24px;
+    color: var(--primary);
+    font-weight: bold;
+    margin-top: 3px;
+    line-height: 1;
+}
+
+.tab-content h3 {
+    margin: 8px 0 10px;
+    font-size: 16px;
+}
+
+.tab-content {
+    animation: gamePop 0.24s ease both;
 }
 
 /* 卡片與任務 */
 .card { 
-    padding: 15px; 
-    border-radius: 12px; 
-    margin-bottom: 15px; 
+    padding: 12px; 
+    border-radius: 8px; 
+    margin-bottom: 10px; 
     color: rgb(253, 246, 246); 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    box-shadow: var(--soft-shadow); 
+    animation: gamePop 0.28s ease both;
 }
 
 .angel-card { 
-    background: linear-gradient(135deg, #8afbd2, #00fecff4); 
+    background: linear-gradient(135deg, #d9fbf4, #66dfcf); 
+    border: 1px solid rgba(20, 184, 166, 0.25);
 }
 
 .demon-card { 
-    background: linear-gradient(135deg, #f87171, #ef4444); 
+    background: linear-gradient(135deg, #fb7185, var(--demon)); 
+    border: 1px solid rgba(244, 63, 94, 0.28);
 }
 
 .task-list { 
@@ -109,17 +206,19 @@ header {
 
 input, select, textarea { 
     width: 100%; 
-    padding: 12px; 
-    margin: 8px 0; 
-    border: 1px solid #e2e8f0; 
+    padding: 10px; 
+    margin: 6px 0; 
+    border: 1px solid var(--line); 
     border-radius: 8px; 
     box-sizing: border-box; 
     font-size: 16px; 
+    color: var(--text);
+    background: #fff;
 }
 
 button { 
     width: 100%; 
-    padding: 12px; 
+    padding: 10px; 
     border: none; 
     border-radius: 8px; 
     cursor: pointer; 
@@ -128,19 +227,26 @@ button {
     margin-top: 5px; 
 }
 
+button:active,
+.nav-tabs li:active {
+    transform: scale(0.96);
+}
+
 .btn-primary { 
-    background: var(--primary); 
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
     color: white; 
+    box-shadow: 0 4px 12px rgba(109, 93, 252, 0.24);
 }
 
 /* 管理員後台樣式 */
 .admin-section { 
-    background: #f8fafc; 
-    border: 1px solid #e2e8f0; 
-    border-radius: 12px; 
-    padding: 15px; 
-    margin-top: 20px; 
+    background: var(--panel); 
+    border: 1px solid var(--line); 
+    border-radius: 8px; 
+    padding: 12px; 
+    margin-top: 14px; 
     display: none; 
+    animation: gamePop 0.28s ease both;
 }
 
 .admin-table { 
@@ -171,12 +277,12 @@ button {
 
 .task-selector {
     background: rgba(255, 255, 255, 0.2);
-    padding: 10px;
+    padding: 8px;
     border-radius: 8px;
-    margin: 10px 0;
+    margin: 8px 0;
 }
 .task-selector label {
-    font-size: 12px;
+    font-size: 11px;
     display: block;
     margin-bottom: 5px;
 }
@@ -184,8 +290,9 @@ button {
     background: white;
     color: #333;
     padding: 8px;
-    font-size: 14px;
+    font-size: 15px;
 }
+.btn-submit,
 .btn-submit-task {
     background: rgba(255, 255, 255, 0.9);
     color: var(--primary);
@@ -218,6 +325,28 @@ button {
     transform: scale(2.0); /* 滑鼠移上去放大看照片 */
     position: relative;
     z-index: 99;
+}
+
+@keyframes gamePop {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* 3D 翻牌特效 */
@@ -273,11 +402,11 @@ button {
    ========================================== */
 #angel-target-display, #demon-target-display {
     display: inline-block;
-    background: #e2e8f0;         /* 低調的灰色背景 */
-    color: #64748b;              /* 低調的灰色文字 */
-    padding: 4px 12px;
+    background: rgba(255,255,255,0.72);
+    color: #475569;
+    padding: 3px 10px;
     border-radius: 16px;         /* 圓角藥丸形狀 */
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     
     /* 🛡️ 核心防護：禁止使用者反白選取文字，防止長按跳出系統選單 */
@@ -290,8 +419,435 @@ button {
 
 /* 按住時的「顯形」狀態 */
 #angel-target-display.revealed, #demon-target-display.revealed {
-    background: #fef08a;         /* 顯眼的高亮黃色 */
-    color: #b45309;              /* 深橘色文字 */
+    background: #fff1b8;
+    color: #8a5a00;
     font-weight: bold;
-    box-shadow: 0 0 8px rgba(250, 204, 21, 0.5); /* 發光特效 */
+    box-shadow: 0 0 8px rgba(245, 184, 75, 0.42);
+}
+
+/* 讓 VIP Header 擁有獨立的 Flex 佈局與按鈕樣式 */
+    #vip-header .nav-tabs {
+        display: flex;
+        list-style: none;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap; /* 避免手機螢幕太窄被擠壓 */
+    }
+    
+    #vip-header .nav-tabs li {
+        flex: initial;
+        flex-direction: row;
+        gap: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.15); /* 微透明背景 */
+        color: rgba(255, 255, 255, 0.7);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    /* 滑鼠懸停特效 */
+    #vip-header .nav-tabs li:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+    
+    /* 點擊啟動後的狀態 (.active) */
+    #vip-header .nav-tabs li.active {
+        background: rgba(255, 255, 255, 0.35);
+        color: #ffffff;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+/* ==========================================
+   🏅 徽章系統
+========================================== */
+
+.badge-section {
+    margin: 0 2px 12px;
+    background: white;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: var(--soft-shadow);
+    border: 1px solid var(--line);
+}
+
+.badge-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 2px 10px;
+}
+
+.badge-page-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text);
+}
+
+.badge-page-header p {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge-wall-toggle {
+    width: 100%;
+    margin: 0;
+    padding: 7px 4px;
+    background: transparent;
+    color: #334155;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}
+
+.badge-wall-toggle b {
+    display: block;
+    font-size: 14px;
+}
+
+.badge-wall-toggle small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: normal;
+}
+
+#badge-toggle-label {
+    color: #6366f1;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge-panel {
+    margin-top: 10px;
+}
+
+.badge-section.is-collapsed .badge-panel {
+    display: none;
+}
+
+.badge-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.badge-item {
+    min-height: 108px;
+    border-radius: 8px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+
+    font-size: 11px;
+    padding: 9px;
+
+    color: white;
+    font-weight: bold;
+
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+
+    animation: badgePop 0.3s ease;
+}
+
+.badge-group-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #64748b;
+    margin-bottom: 8px;
+    padding-top: 2px;
+}
+
+.badge-group + .badge-group {
+    border-top: 1px dashed var(--line);
+    padding-top: 10px;
+}
+
+.badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 8px;
+}
+
+.badge-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.badge-item .emoji {
+    font-size: 21px;
+    line-height: 1;
+}
+
+.badge-state {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.25);
+    white-space: nowrap;
+}
+
+.badge-title {
+    font-size: 12px;
+    line-height: 1.25;
+    margin-top: 8px;
+}
+
+.badge-requirement {
+    font-size: 11px;
+    line-height: 1.35;
+    font-weight: normal;
+    opacity: 0.92;
+    margin-top: 5px;
+}
+
+.badge-progress-text {
+    font-size: 10px;
+    line-height: 1.35;
+    margin-top: 8px;
+}
+
+.badge-progress-bar {
+    width: 100%;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.28);
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.badge-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: rgba(255,255,255,0.92);
+    transition: width 0.3s ease;
+}
+
+.badge-common {
+    background: linear-gradient(135deg, #94a3b8, #64748b);
+}
+
+.badge-rare {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.badge-epic {
+    background: linear-gradient(135deg, #a855f7, #7e22ce);
+}
+
+.badge-legendary {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.badge-hidden {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+}
+
+.badge-item.is-locked {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    box-shadow: none;
+}
+
+.badge-item.is-locked .badge-state {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.badge-item.is-locked .badge-requirement {
+    color: #64748b;
+}
+
+.badge-item.is-locked .badge-progress-bar {
+    background: #e2e8f0;
+}
+
+.badge-item.is-locked .badge-progress-fill {
+    background: #6366f1;
+}
+
+.badge-item.is-secret {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border: 1px solid #475569;
+    color: #e2e8f0;
+}
+
+.badge-item.is-secret .badge-state {
+    background: rgba(255,255,255,0.12);
+    color: #cbd5e1;
+}
+
+.badge-item.is-secret .badge-requirement {
+    color: #cbd5e1;
+}
+
+.badge-item.is-secret .badge-progress-fill {
+    background: #94a3b8;
+}
+
+.badge-empty {
+    color: #94a3b8;
+    font-size: 12px;
+    background: var(--panel);
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.mail-badge-limit-hint {
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 12px;
+    text-align: center;
+}
+
+@keyframes badgePop {
+    from {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ==========================================
+   🎉 解鎖動畫
+========================================== */
+
+.badge-toast {
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    transition: 0.5s ease;
+}
+
+.badge-toast.show {
+    top: 18px;
+}
+
+.badge-toast-inner {
+    background: linear-gradient(135deg, var(--accent), #d98918);
+    color: white;
+    padding: 14px 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+
+.badge-toast-title {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.badge-toast-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+@media (max-width: 480px) {
+    body {
+        background: var(--surface);
+    }
+
+    .container {
+        max-width: none;
+        box-shadow: none;
+    }
+
+    .content {
+        padding: 48px 10px calc(76px + env(safe-area-inset-bottom));
+    }
+
+    #login-screen > div {
+        padding: 28px 0 !important;
+    }
+
+    #login-screen h2 {
+        font-size: 20px;
+        margin: 0 0 14px;
+    }
+
+    .user-bar {
+        padding: 8px 12px;
+    }
+
+    .card {
+        padding: 10px;
+        margin-bottom: 9px;
+    }
+
+    .game-status-strip {
+        margin-bottom: 8px;
+    }
+
+    .score-card {
+        padding: 9px 10px;
+    }
+
+    .score-card #my-current-points {
+        font-size: 22px;
+    }
+
+    .badge-grid {
+        grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+    }
+}
+
+@media (max-width: 360px) {
+    .content {
+        padding-top: 48px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    #main-header {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    .nav-tabs li {
+        font-size: 9px;
+        padding: 6px 1px;
+    }
+
+    .nav-icon {
+        font-size: 14px;
+    }
+
+    .badge-grid {
+        grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+        gap: 6px;
+    }
+
+    .badge-item {
+        min-height: 102px;
+        padding: 8px;
+    }
+}
+
+@media (min-width: 700px) {
+    #main-header {
+        max-width: 430px;
+    }
+
+    .content {
+        padding: 52px 14px calc(78px + env(safe-area-inset-bottom));
+    }
 }

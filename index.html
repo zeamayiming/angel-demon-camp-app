@@ -30,7 +30,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小天使 | 小惡魔 v1.4.2</title>
+    <title>小天使 | 小惡魔 v1.6.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -47,12 +47,13 @@
 
     <header id="main-header">
         <ul class="nav-tabs">
-            <li onclick="switchTab('tab-quests')" id="btn-tab-quests" class="active">任務牆</li>
-            <li onclick="switchTab('tab-mail')" id="btn-tab-mail">匿名信箱</li>
-            <li onclick="switchTab('tab-guess')" id="btn-tab-guess">今日猜猜看</li>
-            <li onclick="switchTab('tab-leaderboard'); listenToLeaderboard();" id="btn-tab-leaderboard">排行榜</li>
+            <li onclick="switchTab('tab-quests')" id="btn-tab-quests" class="active"><span class="nav-icon">🎯</span><span>任務</span></li>
+            <li onclick="switchTab('tab-mail')" id="btn-tab-mail"><span class="nav-icon">✉️</span><span>信箱</span></li>
+            <li onclick="switchTab('tab-guess')" id="btn-tab-guess"><span class="nav-icon">🔍</span><span>猜猜</span></li>
+            <li onclick="switchTab('tab-achievements')" id="btn-tab-achievements"><span class="nav-icon">🏅</span><span>成就</span></li>
+            <li onclick="switchTab('tab-leaderboard'); listenToLeaderboard();" id="btn-tab-leaderboard"><span class="nav-icon">🏆</span><span>排行</span></li>
             <!-- <li onclick="switchTab('tab-leaderboard')" id="btn-tab-leaderboard">排行榜</li> -->
-            <li onclick="switchTab('tab-admin-msg')" id="btn-tab-admin-msg">聯絡我們</li>
+            <li onclick="switchTab('tab-admin-msg')" id="btn-tab-admin-msg"><span class="nav-icon">💬</span><span>聯絡</span></li>
         </ul>
     </header>
 
@@ -89,10 +90,10 @@
         </div>
 
         <div id="game-screen" class="screen">
-            <div style="display: flex; gap: 10px; margin-bottom: 15px; padding: 0 15px;">
-                <div style="flex: 1; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;">
-                    <small style="color: #64748b; font-weight: bold;">🏆 我的總積分</small>
-                    <div id="my-current-points" style="font-size: 28px; color: var(--primary); font-weight: bold; margin-top: 5px;">0</div>
+            <div class="game-status-strip">
+                <div class="score-card">
+                    <small>🏆 我的總積分</small>
+                    <div id="my-current-points">0</div>
                 </div>
                 <!-- <div style="flex: 1.5; background: #fff; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"> -->
                     <!-- <small style="color: #64748b; font-weight: bold;">🔥 當前風雲榜 (Top 3)</small> -->
@@ -193,6 +194,7 @@
 
     <textarea id="mail-msg" placeholder="輸入訊息..."></textarea>
     <button class="btn-primary" onclick="sendMail()">發送心願信</button>
+    <div id="mail-badge-limit-hint" class="mail-badge-limit-hint">寫信成就：今日 0 / 6 封列入</div>
     
     <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
     <div id="mailbox-list"></div>
@@ -211,41 +213,74 @@
                     <p style="font-size:12px; color:#ef4444; margin-top:10px;">* 每個身分一天僅能指認一次，請謹慎選擇！</p>
             </div>
 
-            </div>
- <div id="daily-settle-screen" class="screen">
-    <div style="text-align:center; padding: 20px 0;">
-        <h2 style="color: var(--primary);">🔍 晚間結算積分</h2>
-        <p style="font-size:14px; color:#64748b;">請回想今天一整天，以下哪些事情<b>確實發生在你身上</b>？<br></p>
-        
-        <div id="checklist-container" style="text-align:left; background:#f1f5f9; padding:20px; border-radius:12px; margin-bottom:15px; font-size:16px; line-height:1.8;">
-            </div>
-        
-        <button class="btn-primary" onclick="submitChecklist()">提交我的拼圖</button>
-    </div>
-</div> 
+            <div id="tab-achievements" class="tab-content" style="display:none;">
+                <div id="badge-section" class="badge-section">
+                    <div class="badge-page-header">
+                        <div>
+                            <h3>🏅 成就牆</h3>
+                            <p id="badge-summary">已解鎖 0 / 40</p>
+                        </div>
+                    </div>
 
-            <div id="end-screen" class="screen">
-                <div style="text-align:center; padding: 20px 0;">
-                    <h2 style="color: var(--primary);">🎉 遊戲結束！真相大白 🎉</h2>
-                    <div style="background:#fbf7ff; padding:20px; border-radius:15px; margin-bottom:20px;">
-                        <h3>你的最終總積分</h3>
-                        <span id="final-score" style="font-size:48px; color:#ef4444; font-weight:bold;">0</span>
-                    </div>
-                    
-                    <div class="card angel-card" style="margin-bottom: 15px; color:#354947;">
-                        <h3 style="margin:0 0 10px 0;">😇 默默守護你的小天使是：</h3>
-                        <div id="my-angel-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
-                    </div>
-                    
-                    <div class="card demon-card">
-                        <h3 style="margin:0 0 10px 0;">😈 一直在捉弄你的小惡魔是：</h3>
-                        <div id="my-demon-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
+                    <div id="badge-container" class="badge-container">
+                        <div class="badge-empty">
+                            尚未解鎖任何徽章
+                        </div>
                     </div>
                 </div>
-                <h3 style="text-align: center; color: #d97706;">🏆 榮譽榜 🏆</h3>
-<p style="font-size: 12px; color: #64748b; text-align: center;">點擊卡片揭曉得獎者！</p>
+            </div>
 
-<div style="text-align: center;">
+            <!-- 🎉 成就解鎖 Toast -->
+            <div id="badge-toast" class="badge-toast">
+                <div class="badge-toast-inner">
+                    <div class="badge-toast-title">
+                        🎉 成就解鎖！
+                    </div>
+
+                    <div id="badge-toast-name" class="badge-toast-name">
+                        徽章名稱
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="daily-settle-screen" class="screen">
+            <div style="text-align:center; padding: 20px 0;">
+                <h2 style="color: var(--primary);">🔍 晚間結算積分</h2>
+                <p style="font-size:14px; color:#64748b;">請回想今天一整天，以下哪些事情<b>確實發生在你身上</b>？<br></p>
+                
+                <div id="checklist-container" style="text-align:left; background:#f1f5f9; padding:20px; border-radius:12px; margin-bottom:15px; font-size:16px; line-height:1.8;">
+                    </div>
+                
+                <button class="btn-primary" onclick="submitChecklist()">提交我的拼圖</button>
+            </div>
+        </div> 
+
+        <div id="end-screen" class="screen">
+            <div style="text-align:center; padding: 20px 0;">
+                <h2 style="color: var(--primary);">🎉 遊戲結束！真相大白 🎉</h2>
+                <div style="background:#fbf7ff; padding:20px; border-radius:15px; margin-bottom:20px;">
+                    <h3>你的最終總積分</h3>
+                    <span id="final-score" style="font-size:48px; color:#ef4444; font-weight:bold;">0</span>
+                </div>
+                
+                <div class="card angel-card" style="margin-bottom: 15px; color:#354947;">
+                    <h3 style="margin:0 0 10px 0;">😇 默默守護你的小天使是：</h3>
+                    <div id="my-angel-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
+                </div>
+                
+                <div class="card demon-card">
+                    <h3 style="margin:0 0 10px 0;">😈 一直在捉弄你的小惡魔是：</h3>
+                    <div id="my-demon-reveal" style="font-size:28px; font-weight:bold; background:rgba(255,255,255,0.2); border-radius:8px; padding:10px;">???</div>
+                </div>
+            </div>
+            <h3 style="text-align: center; color: #d97706;">🏆 榮譽榜 🏆</h3>
+            <p style="font-size: 12px; color: #64748b; text-align: center;">點擊卡片揭曉得獎者！</p>
+
+        <div style="text-align: center;">
+        </div>
+        
+
     <!-- <h2 style="color: var(--primary); margin-bottom: 20px;">🏆 結算與頒獎 🏆</h2> -->
 
     <div class="swiper award-swiper" style="width: 100%; min-height: 180px; padding: 20px 0; overflow: hidden;">
@@ -300,39 +335,83 @@
     </div>
     
     <button style="margin-top: 20px; background: #64748b; color: white;" onclick="logout()">返回首頁</button>
-</div>
-            </div>
+        </div> 
+        <!-- </div> -->
 
-<div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px;">ADMIN</div>
-        <div id="admin-panel" class="admin-section">
+        <div id="pause-screen" class="screen">
+            <div class="card" style="text-align: center; padding: 40px 20px; margin-top: 50px;">
+                <div style="font-size: 50px; margin-bottom: 20px;">🚧</div>
+                <h2 style="color: #1e293b; margin-bottom: 15px;">系統整理中</h2>
+                <p style="color: #64748b; line-height: 1.6; margin-bottom: 20px;">
+                    目前管理員正在進行資料維護或活動準備，<br>
+                    遊戲暫時暫停，請稍候片刻...
+                </p>
+                <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px; margin-bottom:20px;">ADMIN</div>
+        
+    <div id="admin-panel" class="admin-section">
             <div id="admin-winner-board" style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #cbd5e1; text-align: left;">
                 <h4 style="margin: 0 0 10px 0; color: #334155;">👑 當前預測得獎名單 (即時更新)</h4>
                 <div id="award-list" style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px;">
-                    </div>
+                </div>
             </div>
-            <h3 style="margin-top:0;">👁️ 管理員控制台</h3>
             
+            <h3 style="margin-top:0;">👁️ 管理員控制台</h3>
             <button style="background:#475569; color:white;" onclick="assignRoles()">1. 隨機分配身分並同步開始</button>
             <button style="background:#be123c; color:white;" onclick="resetGame()">2. 徹底重置 (清空所有資料)</button>
             <button style="background:#059669; color:white;" onclick="revealAll()">3. 生成全體關係報告</button>
             <button style="background:#f59e0b; color:white;" onclick="endGame()">4. 結束遊戲並全體揭曉</button>
+            <button id="admin-pause-btn" onclick="toggleGamePause()" style="background: #f59e0b; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px;">
+                ⏸️ 暫停遊戲 (切換至維護中)
+            </button>
             
             <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
             
             <h4 style="margin:0 0 10px 0; color:#475569;">🧩 晚間盲測審核區</h4>
-            <button style="background:#3b82f6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 A. 載入今日任務清單 (不影響玩家)</button>
+            <button style="background:#3b82f6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 1. 載入今日任務清單 (不影響玩家)</button>
             
-            <div id="admin-task-review" style="background:#f8fafc; padding:10px; border-radius:5px; margin-bottom:10px; border:1px solid #cbd5e1; display:none;">
-                <div id="review-list" style="max-height:150px; overflow-y:auto; text-align:left; font-size:13px; line-height:1.6;">
-                    </div>
-                <div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px; display:flex; gap:5px;">
-                    <input type="text" id="fake-task-input" placeholder="加入假任務(煙霧彈)..." style="flex:1; padding:5px; border:1px solid #ccc; border-radius:4px;">
-                    <button onclick="addFakeTask()" style="background:#475569; color:white; padding:5px 10px; font-size:12px; width:auto; margin:0;">加入</button>
-                </div>
-            </div>
+<div id="admin-task-review" style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #cbd5e1; display:none;">
+    <div id="review-list" style="max-height:150px; overflow-y:auto; text-align:left; font-size:13px; line-height:1.6; margin-bottom: 15px;"></div>
+    
+    <div style="border-top:2px dashed #94a3b8; padding-top:15px; text-align: left;">
+        <h4 style="margin-top:0; margin-bottom:10px; color:#475569;">🎯 自定義任務 </h4>
+        
+        <div style="margin-bottom: 10px;">
+            <label style="font-size:13px; font-weight:bold; color:#1e293b;">任務敘述：</label>
+            <input type="text" id="admin-task-name" placeholder="例如：今天被隊輔單獨叫上去跳舞" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1; box-sizing: border-box; margin-top: 4px;">
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <label style="font-size:13px; font-weight:bold; color:#1e293b;">出現在誰的盲測選單？</label>
+            <select id="admin-task-target" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1; margin-top: 4px;">
+                <option value="all">🌐 全體學員 (大家都看得到這題)</option>
+                </select>
+        </div>
 
-            <button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="publishAndStartSettlement()">📢 B. 發布勾選任務並強制玩家作答</button>
-            <button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 C. 結算全體分數並返回遊戲</button>
+        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 12px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" id="admin-task-scoreable" checked onchange="document.getElementById('admin-task-points-box').style.display = this.checked ? 'block' : 'none';">
+                <label for="admin-task-scoreable" style="font-size:13px; font-weight:bold; cursor:pointer; margin:0;">勾選此任務要加分</label>
+            </div>
+            <div id="admin-task-points-box" style="display: block;">
+                <label style="font-size:13px; color:#64748b;">配對成功給：</label>
+                <input type="number" id="admin-task-points" value="10" style="width:60px; padding:4px; border-radius:4px; border:1px solid #cbd5e1; text-align:center; font-weight:bold; color:#7c3aed;"> 分
+            </div>
+        </div>
+        
+        <button onclick="addAdminCustomTask()" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);">🚀 發布至盲測池</button>
+    </div>
+</div>
+
+            <button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="publishAndStartSettlement()">📢 2. 發布勾選任務並強制玩家作答</button>
+            <button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 3. 結算全體分數並返回遊戲</button>
 
             <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
 
@@ -353,66 +432,92 @@
                 <tbody id="admin-monitor"></tbody>
             </table>
 
-        <!-- <div id="admin-login-trigger" onclick="showAdmin()" style="text-align:center; color:#eee; font-size:10px; cursor:pointer; margin-top:50px;">ADMIN</div>
-        <div id="admin-panel" class="admin-section">
-            <h3 style="margin-top:0;">�👁️ 上帝視角控制台</h3>
-            <button style="background:#475569; color:white;" onclick="assignRoles()">1. 隨機分配身分並同步開始</button>
-            <button style="background:#be123c; color:white;" onclick="resetGame()">2. 徹底重置 (清空所有資料)</button>
-            <button style="background:#059669; color:white;" onclick="revealAll()">3. 生成全體關係報告</button>
-            <button style="background:#f59e0b; color:white;" onclick="endGame()">4. 結束遊戲並全體揭曉</button>
-            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
-<button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 選擇任務清單</button>
-<button style="background:#5489fb; color:white;" onclick="publishAndStartSettlement()">🧮 晚間發布今日結算</button>
-<button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 結算今日分數並返回遊戲</button>
-
-            <h4>📊 玩家即時狀態監控</h4>
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>玩家</th>
-                        <th>積分</th>
-                        <th>最新任務與證明 (含照片預覽)</th>
-                        <th>管理動作</th>
-                    </tr>
-                </thead>
-                <tbody id="admin-monitor"></tbody>
-            </table>
-        </div> -->
-
-
-<div id="admin-panel" class="admin-section">
-<hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
-    <h4 style="margin:0 0 10px 0; color:#475569;">🧩 晚間盲測審核區</h4>
-    
-    <button style="background:#3b82f6; color:white; margin-bottom: 8px;" onclick="loadTasksForAdmin()">🔑 1. 載入今日任務清單 (不影響玩家)</button>
-    
-    <div id="admin-task-review" style="background:#f8fafc; padding:10px; border-radius:5px; margin-bottom:10px; border:1px solid #cbd5e1; display:none;">
-        <div id="review-list" style="max-height:150px; overflow-y:auto; text-align:left; font-size:13px; line-height:1.6;">
+            <hr style="margin: 20px 0; border: 0; border-top: 2px dashed #8b5cf6; opacity: 0.3;">
+            <div id="admin-mailbox-section" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #8b5cf6;">📨 收件匣</h4>
+                <button onclick="clearAdminMessages()" style="width: 250px; background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">🗑️ 清空所有訊息</button>
             </div>
-        <div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px; display:flex; gap:5px;">
-            <input type="text" id="fake-task-input" placeholder="加入假任務(煙霧彈)..." style="flex:1; padding:5px; border:1px solid #ccc; border-radius:4px;">
-            <button onclick="addFakeTask()" style="background:#475569; color:white; padding:5px 10px; font-size:12px; width:auto; margin:0;">加入</button>
+            <div id="admin-msg-list" style="background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; max-height: 300px; overflow-y: auto;">
+                <p style="color: #94a3b8; font-size: 12px; text-align: center;">尚未收到任何玩家訊息...</p>
+            </div>
         </div>
-    </div>
 
-    <button style="background:#8b5cf6; color:white; margin-bottom: 8px;" onclick="publishAndStartSettlement()">📢 2. 發布勾選任務並強制玩家作答</button>
-    <button style="background:#10b981; color:white;" onclick="calculateAndApplyScores()">🧮 3. 結算全體分數並返回遊戲</button>
+    </div> 
+    <div id="superuser-screen" class="screen" style="display: none; padding: 15px; margin: auto;">
+        
+        <div id="vip-header" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); padding: 10px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);">
+            <h3 style="color: #fff; text-align: center; margin: 0 0 10px 0; font-size: 16px; letter-spacing: 1px;">🎬 VIP 觀戰導播室</h3>
+            <ul class="nav-tabs" style="justify-content: center; margin: 0; padding: 0;">
+                <li onclick="switchVipTab('vip-tab-matrix')" id="btn-vip-matrix" class="active" style="font-size: 12px; padding: 6px 10px;">👥 關係監控</li>
+                <li onclick="switchVipTab('vip-tab-mails')" id="btn-vip-mails" style="font-size: 12px; padding: 6px 10px;">📨 監聽台</li>
+                <li onclick="switchVipTab('vip-tab-live')" id="btn-vip-live" style="font-size: 12px; padding: 6px 10px;">⚡ 轉播台</li>
+                <li onclick="switchVipTab('vip-tab-guess')" id="btn-vip-guess" style="font-size: 12px; padding: 6px 10px;">🤡 猜猜看</li>
+                <li onclick="switchVipTab('vip-tab-status')" id="btn-vip-status" style="font-size: 12px; padding: 6px 10px;">📈 出擊榜</li>
+            </ul>
+        </div>
+
+        <div id="vip-tab-matrix" class="vip-tab-content">
+            <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #6d28d9;">🕵️‍♂️ 全部人關係</h3>
+                <!-- <p style="font-size: 12px; color: #64748b; margin-bottom: 15px;">直接看穿全場配對鏈結，攝影組抓拍終極雷達！📸</p> -->
+                <div id="vip-matrix-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                </div>
+            </div>
+        </div>
+
+        <div id="vip-tab-mails" class="vip-tab-content" style="display: none;">
+            <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #6d28d9;">📨 敲敲話：即時監聽台</h3>
+                <div id="vip-live-mails" style="max-height: 600px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 8px;">
+                </div>
+            </div>
+        </div>
+
+        <div id="vip-tab-live" class="vip-tab-content" style="display: none;">
+            <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #6d28d9;">⚡ 戰況特報：即時事件轉播台</h3>
+                <div id="vip-live-ticker" style="max-height: 500px; overflow-y: auto; background: #1e293b; color: #34d399; padding: 15px; border-radius: 8px; font-family: monospace; line-height: 1.6; font-size: 13px;">
+                    <div>📡 轉播雷達已啟動，等待學員出擊...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="vip-tab-guess" class="vip-tab-content" style="display: none;">
+            <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #6d28d9;">🤡 今日猜猜看即時轉播</h3>
+                <div id="vip-live-guesses" style="max-height: 500px; overflow-y: auto; background: #fdf2f8; padding: 15px; border-radius: 8px;">
+                </div>
+            </div>
+        </div>
+
+        <div id="vip-tab-status" class="vip-tab-content" style="display: none;">
+            <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #6d28d9;">📈 出擊狀態榜</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+                        <thead style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <tr>
+                                <th style="padding: 10px;">玩家狀態</th>
+                                <th style="padding: 10px;">真實積分</th>
+                                <th style="padding: 10px;">隱形潛伏率 (被猜中次數)</th>
+                                <th style="padding: 10px;">出擊頻率 (本日發信)</th>
+                                <th style="padding: 10px;">最後互動時間</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vip-status-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button style="background: #64748b; color: white; width: auto; padding: 8px 20px;" onclick="logout()">安全登出導播室</button>
+        </div>
+    </div> 
 </div>
-
-<hr style="margin: 20px 0; border: 0; border-top: 2px dashed #8b5cf6; opacity: 0.3;">
-<div id="admin-mailbox-section" style="text-align: left;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h4 style="margin: 0; color: #8b5cf6;">📨 收件匣</h4>
-        <button onclick="clearAdminMessages()" style="width: 250px; background: #ef4444; color: white; border: none; padding: 4px 8x; border-radius: 4px; font-size: 11px; cursor: pointer;">🗑️ 清空所有訊息</button>
-    </div>
-    
-    <div id="admin-msg-list" style="background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; max-height: 300px; overflow-y: auto;">
-        <p style="color: #94a3b8; font-size: 12px; text-align: center;">尚未收到任何玩家訊息...</p>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
 <script src="script.js"></script>
 </body>
 </html>
